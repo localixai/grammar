@@ -45,7 +45,7 @@ export async function fetchModels(apiKey?: string): Promise<ModelInfo[]> {
 
     const models: ModelInfo[] = json.data
       .filter((m) => m.id && m.name)
-      .map((m) => ({ id: m.id, name: m.name, created: m.created }))
+      .map((m) => ({ id: m.id, name: m.name, ...(m.created !== undefined && { created: m.created }) }))
       .sort((a, b) => {
         const timeA = a.created ?? 0;
         const timeB = b.created ?? 0;

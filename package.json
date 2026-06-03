@@ -9,6 +9,7 @@
     "build": "vite build",
     "lint": "eslint src/",
     "format": "prettier --write src/",
+    "typecheck": "tsc --noEmit",
     "zip": "npm run build && mkdir -p dist-zip && cd dist && zip -r ../dist-zip/localix-grammar.zip . && echo 'Created dist-zip/localix-grammar.zip'"
   },
   "author": "Localix <hello@localix.ai> (https://localix.ai)",
