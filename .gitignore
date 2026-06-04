@@ -2,6 +2,11 @@
 dist/
 dist-zip/
 
+# CI is intentionally versioned even if a global Git ignore hides .github.
+!.github/
+!.github/workflows/
+!.github/workflows/ci.yml
+
 # ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules/
 .pnp
@@ -9,15 +14,25 @@ node_modules/
 .yarn/install-state.gz
 
 # ── Environment / secrets ─────────────────────────────────────────────────────
-.env
-.env.local
-.env.*.local
+.env*
+!.env.example
+.envrc
+.direnv/
+*.pem
+*.key
+*.p12
+*.pfx
 
 # ── TypeScript ────────────────────────────────────────────────────────────────
 *.tsbuildinfo
 
 # ── Vite ──────────────────────────────────────────────────────────────────────
 .vite/
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+coverage/
+playwright-report/
+test-results/
 
 # ── macOS ─────────────────────────────────────────────────────────────────────
 .DS_Store
@@ -28,6 +43,9 @@ Icon
 # ── Editor ────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
+.fleet/
+.zed/
+.history/
 *.suo
 *.ntvs*
 *.njsproj
@@ -41,6 +59,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# ── Temporary files ───────────────────────────────────────────────────────────
+.cache/
+.tmp/
+tmp/
+*.orig
+*.rej
 
 # ── OS ────────────────────────────────────────────────────────────────────────
 Thumbs.db

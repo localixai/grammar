@@ -1,59 +1,78 @@
-import { saveSettings } from "./storage";
+import { OpenRouterCore } from "@openrouter/sdk/core.js";
+import { oAuthCreateAuthorizationUrl } from "@openrouter/sdk/funcs/oAuthCreateAuthorizationUrl.js";
+import { oAuthCreateSHA256CodeChallenge } from "@openrouter/sdk/funcs/oAuthCreateSHA256CodeChallenge.js";
+import { oAuthExchangeAuthCodeForAPIKey } from "@openrouter/sdk/funcs/oAuthExchangeAuthCodeForAPIKey.js";
 
-function generateCodeVerifier(): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
+import { OPENROUTER_APP } from "./openrouter-app";
 
-async function computeS256Challenge(verifier: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
-  return btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
+const TOKEN_EXCHANGE_TIMEOUT_MS = 30_000;
 
-async function exchangeCode(code: string, verifier: string): Promise<string> {
-  const res = await fetch("https://openrouter.ai/api/v1/auth/keys", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, code_verifier: verifier, code_challenge_method: "S256" }),
+function oauthClient(): OpenRouterCore {
+  return new OpenRouterCore({
+    ...OPENROUTER_APP,
+    retryConfig: { strategy: "none" },
+    timeoutMs: TOKEN_EXCHANGE_TIMEOUT_MS,
   });
-
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
-    throw new Error(body.error?.message ?? `HTTP ${res.status}`);
-  }
-
-  const { key } = (await res.json()) as { key: string };
-  return key;
 }
 
-export async function initiateOAuth(): Promise<void> {
-  const verifier = generateCodeVerifier();
-  const challenge = await computeS256Challenge(verifier);
-  const redirectUrl = chrome.identity.getRedirectURL("openrouter");
+async function exchangeCode(
+  client: OpenRouterCore,
+  code: string,
+  verifier: string,
+): Promise<string> {
+  const result = await oAuthExchangeAuthCodeForAPIKey(client, {
+    requestBody: {
+      code,
+      codeVerifier: verifier,
+      codeChallengeMethod: "S256",
+    },
+  });
+  if (!result.ok) {
+    const message =
+      result.error instanceof Error && result.error.message
+        ? result.error.message
+        : "OpenRouter key exchange failed.";
+    throw new Error(message);
+  }
+  return result.value.key;
+}
 
-  const authUrl = `https://openrouter.ai/auth?${new URLSearchParams({
-    callback_url: redirectUrl,
-    code_challenge: challenge,
-    code_challenge_method: "S256",
-  }).toString()}`;
+export async function authorizeOpenRouter(): Promise<string> {
+  const client = oauthClient();
+  const pkce = await oAuthCreateSHA256CodeChallenge();
+  if (!pkce.ok) throw new Error("OpenRouter could not create a secure PKCE challenge.");
+
+  const redirectUrl = chrome.identity.getRedirectURL("openrouter");
+  const authorization = oAuthCreateAuthorizationUrl(client, {
+    callbackUrl: redirectUrl,
+    codeChallenge: pkce.value.codeChallenge,
+    codeChallengeMethod: "S256",
+  });
+  if (!authorization.ok) throw new Error("OpenRouter could not create an authorization URL.");
 
   const responseUrl = await chrome.identity.launchWebAuthFlow({
-    url: authUrl,
+    url: authorization.value,
     interactive: true,
   });
 
   if (!responseUrl) throw new Error("OAuth cancelled");
 
-  const code = new URL(responseUrl).searchParams.get("code");
+  const callback = new URL(responseUrl);
+  const expectedCallback = new URL(redirectUrl);
+  if (
+    callback.origin !== expectedCallback.origin ||
+    callback.pathname !== expectedCallback.pathname
+  ) {
+    throw new Error("OpenRouter returned an unexpected OAuth callback");
+  }
+  const params = callback.searchParams;
+  const oauthError = params.get("error");
+  if (oauthError) {
+    throw new Error(params.get("error_description") ?? oauthError);
+  }
+  const code = params.get("code");
   if (!code) throw new Error("No authorization code in response");
+  if (code.length > 4_096) throw new Error("OpenRouter returned an invalid authorization code");
 
-  const apiKey = await exchangeCode(code, verifier);
-  await saveSettings({ apiKey });
+  return exchangeCode(client, code, pkce.value.codeVerifier);
 }

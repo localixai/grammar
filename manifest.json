@@ -1,42 +1,40 @@
 {
   "manifest_version": 3,
   "name": "Localix Grammar",
-  "version": "1.0.0",
-  "description": "AI-powered grammar, spelling, and style checker for Chrome. Works on any website.",
-  "permissions": ["storage", "tabs", "identity"],
-  "host_permissions": ["<all_urls>"],
+  "version": "2.0.2",
+  "description": "Precise AI grammar, spelling, punctuation, and style checks in supported web editors.",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "identity"],
+  "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": ["content.js"],
-      "run_at": "document_idle"
+      "run_at": "document_start",
+      "all_frames": true
     }
   ],
   "action": {
+    "default_title": "Localix Grammar",
     "default_popup": "src/popup/index.html",
     "default_icon": {
-      "16": "public/icon-72x72.png",
-      "32": "public/icon-96x96.png",
-      "48": "public/icon-96x96.png",
-      "128": "public/icon-128x128.png"
+      "16": "icon-72x72.png",
+      "32": "icon-96x96.png",
+      "48": "icon-96x96.png",
+      "128": "icon-128x128.png"
     }
   },
   "icons": {
-    "16": "public/icon-72x72.png",
-    "32": "public/icon-96x96.png",
-    "48": "public/icon-96x96.png",
-    "128": "public/icon-128x128.png",
-    "192": "public/icon-192x192.png",
-    "512": "public/icon-512x512.png"
+    "16": "icon-72x72.png",
+    "32": "icon-96x96.png",
+    "48": "icon-96x96.png",
+    "128": "icon-128x128.png"
   },
-  "web_accessible_resources": [
-    {
-      "resources": ["public/*", "assets/*"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src https://openrouter.ai; object-src 'none'"
+  }
 }

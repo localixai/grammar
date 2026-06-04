@@ -1,27 +1,26 @@
-import { defineConfig, build } from "vite";
-import { resolve } from "path";
-import { copyFileSync, mkdirSync } from "fs";
+import { copyFileSync, mkdirSync } from "node:fs";
+import { resolve } from "node:path";
+
+import { build, defineConfig } from "vite";
 
 function buildContentScript() {
   return {
     name: "build-content-script",
-    async closeBundle() {
+    async closeBundle(): Promise<void> {
       await build({
         configFile: false,
+        publicDir: false,
         build: {
-          target: "es2020",
-          minify: false,
-          sourcemap: true,
+          target: "chrome116",
+          minify: "oxc",
+          sourcemap: false,
           outDir: "dist",
           emptyOutDir: false,
           lib: {
-            entry: resolve(__dirname, "src/content/index.ts"),
+            entry: resolve(import.meta.dirname, "src/content/index.ts"),
             name: "content",
             formats: ["iife"],
             fileName: () => "content.js",
-          },
-          rollupOptions: {
-            output: { inlineDynamicImports: true },
           },
         },
       });
@@ -32,23 +31,25 @@ function buildContentScript() {
 function buildBackgroundScript() {
   return {
     name: "build-background-script",
-    async closeBundle() {
+    async closeBundle(): Promise<void> {
       await build({
         configFile: false,
+        publicDir: false,
         build: {
-          target: "es2020",
-          minify: false,
-          sourcemap: true,
+          target: "chrome116",
+          minify: "oxc",
+          sourcemap: false,
           outDir: "dist",
           emptyOutDir: false,
           lib: {
-            entry: resolve(__dirname, "src/background/index.ts"),
-            name: "background",
-            formats: ["iife"],
+            entry: resolve(import.meta.dirname, "src/background/index.ts"),
+            formats: ["es"],
             fileName: () => "background.js",
           },
           rollupOptions: {
-            output: { inlineDynamicImports: true },
+            output: {
+              codeSplitting: false,
+            },
           },
         },
       });
@@ -58,37 +59,44 @@ function buildBackgroundScript() {
 
 function copyAssetsPlugin() {
   return {
-    name: "copy-assets",
-    closeBundle() {
-      mkdirSync("dist/public", { recursive: true });
+    name: "copy-extension-assets",
+    closeBundle(): void {
       copyFileSync("manifest.json", "dist/manifest.json");
-      const filesToCopy = [
-        "logo-light.svg",
-        "logo-dark.svg",
+      copyFileSync("THIRD_PARTY_NOTICES.md", "dist/THIRD_PARTY_NOTICES.md");
+      for (const asset of [
         "icon-72x72.png",
         "icon-96x96.png",
         "icon-128x128.png",
-        "icon-192x192.png",
-        "icon-512x512.png",
+        "logo-dark.svg",
+        "logo-light.svg",
+      ]) {
+        copyFileSync(`public/${asset}`, `dist/${asset}`);
+      }
+      mkdirSync("dist/licenses", { recursive: true });
+      const licenses: ReadonlyArray<readonly [string, string]> = [
+        ["node_modules/@openrouter/sdk/LICENSE.md", "openrouter-sdk-Apache-2.0.txt"],
+        ["node_modules/zod/LICENSE", "zod-MIT.txt"],
+        ["node_modules/@fontsource-variable/inter/LICENSE", "inter-OFL-1.1.txt"],
       ];
-      for (const file of filesToCopy) {
-        copyFileSync(`public/${file}`, `dist/public/${file}`);
+      for (const [source, target] of licenses) {
+        copyFileSync(source, `dist/licenses/${target}`);
       }
     },
   };
 }
 
 export default defineConfig({
+  publicDir: false,
   plugins: [copyAssetsPlugin(), buildContentScript(), buildBackgroundScript()],
   build: {
-    target: "es2020",
-    minify: false,
-    sourcemap: true,
+    target: "chrome116",
+    minify: "oxc",
+    sourcemap: false,
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, "src/popup/index.html"),
+        popup: resolve(import.meta.dirname, "src/popup/index.html"),
       },
       output: {
         entryFileNames: "assets/[name]-[hash].js",

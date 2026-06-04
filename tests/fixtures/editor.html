@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Localix Grammar fixture</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      localix-grammar-root {
+        display: none !important;
+      }
+      body {
+        min-height: 1600px;
+        margin: 0;
+        background: #f6f6f6;
+        color: #242424;
+        font:
+          14px/1.5 Inter,
+          ui-sans-serif,
+          system-ui,
+          sans-serif;
+      }
+      .site-header {
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 48px;
+        border-bottom: 1px solid #e5e5e5;
+        background: rgba(255, 255, 255, 0.92);
+      }
+      .site-header strong {
+        font-size: 15px;
+      }
+      .site-header span {
+        color: #666;
+        font-size: 12px;
+      }
+      main {
+        width: min(880px, calc(100% - 48px));
+        margin: 64px auto 0;
+      }
+      .eyebrow {
+        margin: 0 0 8px;
+        color: #666;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0;
+        font-size: 30px;
+        letter-spacing: -0.04em;
+      }
+      .intro {
+        max-width: 620px;
+        margin: 10px 0 28px;
+        color: #666;
+      }
+      .editor-card {
+        padding: 18px;
+        border: 1px solid #dedede;
+        border-radius: 16px;
+        background: white;
+        box-shadow: 0 16px 50px -38px rgba(0, 0, 0, 0.45);
+      }
+      .editor-card label {
+        display: block;
+        margin-bottom: 9px;
+        font-size: 12px;
+        font-weight: 650;
+      }
+      #editor {
+        width: 100%;
+        min-height: 190px;
+        resize: vertical;
+        border: 1px solid #cecece;
+        border-radius: 10px;
+        padding: 16px;
+        outline: none;
+        background: #fff;
+        color: #242424;
+        font:
+          17px/1.65 Georgia,
+          serif;
+      }
+      #editor:focus {
+        border-color: #6c6c6c;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.07);
+      }
+      .editor-meta {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 9px;
+        color: #666;
+        font-size: 11px;
+      }
+      .test-zone {
+        width: min(880px, calc(100% - 48px));
+        margin: 620px auto 0;
+        padding: 24px;
+        border-top: 1px solid #ddd;
+      }
+      #rich,
+      #reactive-editor,
+      #browser-spellcheck-off,
+      #complex-editor-scroll,
+      #shadow-editor-host,
+      #blocked-shadow-host,
+      #frame {
+        display: block;
+        margin-top: 18px;
+      }
+      #rich {
+        min-height: 80px;
+        padding: 12px;
+        border: 1px solid #ccc;
+        background: white;
+      }
+      #reactive-editor {
+        width: 100%;
+        min-height: 72px;
+        margin-top: 18px;
+        padding: 12px;
+        border: 1px solid #ccc;
+        background: white;
+      }
+      #browser-spellcheck-off {
+        min-height: 72px;
+        padding: 12px;
+        border: 1px solid #ccc;
+        background: white;
+      }
+      #complex-editor-scroll {
+        width: 100%;
+        height: 150px;
+        overflow: auto;
+        border: 1px solid #c7cdd6;
+        border-radius: 4px;
+        background: white;
+      }
+      #complex-editor-surface {
+        position: relative;
+        width: 100%;
+        min-height: 280px;
+        padding: 52px 16px 16px;
+      }
+      #complex-editor-surface::before {
+        position: absolute;
+        inset: 0 0 auto;
+        height: 42px;
+        border-bottom: 1px solid #dfe1e6;
+        content: "";
+      }
+      #complex-editor {
+        width: 24px;
+        height: 24px;
+        overflow: visible;
+        outline: none;
+      }
+      #frame {
+        width: 100%;
+        height: 180px;
+        border: 1px solid #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <strong>Draft</strong>
+      <span>Product notes · Private workspace</span>
+    </header>
+    <main>
+      <p class="eyebrow">Writing workspace</p>
+      <h1>Shape the next release</h1>
+      <p class="intro">
+        Capture a clear product update, review it in place, and keep the author’s formatting intact.
+      </p>
+      <section class="editor-card">
+        <label for="editor">Release summary</label>
+        <textarea id="editor" rows="5">This are a test sentence.</textarea>
+        <div class="editor-meta">
+          <span>Saved locally</span>
+          <span>5 words</span>
+        </div>
+      </section>
+    </main>
+    <section class="test-zone" aria-label="Integration test editors">
+      <label>
+        Sensitive fixture
+        <input id="secret" type="text" autocomplete="current-password" value="do not read" />
+      </label>
+      <div id="rich" contenteditable="true" aria-label="Rich text">
+        <strong>This</strong> are rich text.
+      </div>
+      <div
+        id="reactive-editor"
+        contenteditable="true"
+        role="textbox"
+        spellcheck="false"
+        aria-label="Reactive rich text"
+      >
+        This are reactive text.
+      </div>
+      <div
+        id="browser-spellcheck-off"
+        contenteditable="true"
+        role="textbox"
+        spellcheck="false"
+        aria-label="Browser spellcheck disabled"
+      ></div>
+      <div id="complex-editor-scroll" role="region" aria-label="Nested editor surface" tabindex="0">
+        <div id="complex-editor-surface">
+          <div
+            id="complex-editor"
+            role="textbox"
+            contenteditable="true"
+            aria-label="Nested rich text"
+          >
+            This are nested rich text.
+          </div>
+        </div>
+      </div>
+      <div id="shadow-editor-host"></div>
+      <div id="blocked-shadow-host" data-localix-grammar-ignore></div>
+      <iframe
+        id="frame"
+        title="Cross-origin editor frame"
+        src="http://localhost:4179/frame.html"
+      ></iframe>
+    </section>
+    <script>
+      window.replaceReactiveEditor = () => {
+        const editor = document.querySelector("#reactive-editor");
+        if (!(editor instanceof HTMLElement)) return null;
+        const replacement = editor.cloneNode(true);
+        editor.replaceWith(replacement);
+        if (replacement instanceof HTMLElement) replacement.focus();
+        window.reactiveEditorReplacements = (window.reactiveEditorReplacements || 0) + 1;
+        return replacement;
+      };
+
+      document.addEventListener(
+        "pointerdown",
+        (event) => {
+          const editor = document.querySelector("#reactive-editor");
+          if (
+            editor instanceof HTMLElement &&
+            document.activeElement === editor &&
+            event.target instanceof Node &&
+            !editor.contains(event.target)
+          ) {
+            window.reactiveEditorPointerLeaks = (window.reactiveEditorPointerLeaks || 0) + 1;
+          }
+        },
+        true,
+      );
+
+      document.addEventListener("beforeinput", (event) => {
+        const editor = event.target;
+        if (
+          !event.isTrusted &&
+          event.inputType === "insertReplacementText" &&
+          typeof event.data === "string" &&
+          editor instanceof HTMLElement &&
+          editor.id === "reactive-editor"
+        ) {
+          event.preventDefault();
+          editor.textContent = (editor.textContent || "").replace("are", event.data);
+          window.replaceReactiveEditor();
+        }
+      });
+
+      document.addEventListener("input", (event) => {
+        const editor = event.target;
+        if (event.isTrusted && editor instanceof HTMLElement && editor.id === "reactive-editor") {
+          window.replaceReactiveEditor();
+        }
+      });
+
+      for (const [hostId, value] of [
+        ["shadow-editor-host", "This are shadow text."],
+        ["blocked-shadow-host", "This are private shadow text."],
+      ]) {
+        const host = document.getElementById(hostId);
+        const shadow = host.attachShadow({ mode: "open" });
+        const editor = document.createElement("textarea");
+        editor.value = value;
+        editor.setAttribute("aria-label", `${hostId} editor`);
+        shadow.appendChild(editor);
+      }
+    </script>
+  </body>
+</html>
