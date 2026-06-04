@@ -2,6 +2,11 @@
 dist/
 dist-zip/
 
+# CI is intentionally versioned even if a global Git ignore hides .github.
+!.github/
+!.github/workflows/
+!.github/workflows/ci.yml
+
 # ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules/
 .pnp
@@ -18,6 +23,11 @@ node_modules/
 
 # ── Vite ──────────────────────────────────────────────────────────────────────
 .vite/
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+coverage/
+playwright-report/
+test-results/
 
 # ── macOS ─────────────────────────────────────────────────────────────────────
 .DS_Store

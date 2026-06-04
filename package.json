@@ -1,23 +1,30 @@
 {
   "name": "localix-grammar",
-  "version": "1.0.0",
-  "description": "AI-powered grammar, spelling, and style checker for Chrome. Works on any website.",
+  "version": "2.0.2",
+  "description": "Precise AI grammar, spelling, punctuation, and style checks in supported web editors.",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build",
     "lint": "eslint src/",
-    "format": "prettier --write src/",
+    "format": "prettier --write src/ tests/ scripts/ docs/ .github/ README.md PRIVACY_POLICY.md CONTRIBUTING.md CHANGELOG.md SECURITY.md THIRD_PARTY_NOTICES.md manifest.json package.json tsconfig.json vite.config.ts vitest.config.ts playwright.config.ts",
+    "format:check": "prettier --check src/ tests/ scripts/ docs/ .github/ README.md PRIVACY_POLICY.md CONTRIBUTING.md CHANGELOG.md SECURITY.md THIRD_PARTY_NOTICES.md manifest.json package.json tsconfig.json vite.config.ts vitest.config.ts playwright.config.ts",
     "typecheck": "tsc --noEmit",
-    "zip": "npm run build && mkdir -p dist-zip && cd dist && zip -r ../dist-zip/localix-grammar.zip . && echo 'Created dist-zip/localix-grammar.zip'"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "npm run build && playwright test",
+    "validate:dist": "node scripts/validate-dist.mjs",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run validate:dist",
+    "verify": "npm run check && npm run test:coverage && npm run test:e2e && npm audit --audit-level=high",
+    "zip": "npm run check && mkdir -p dist-zip && rm -f dist-zip/localix-grammar.zip dist-zip/localix-grammar.zip.sha256 && cd dist && zip -Xqr ../dist-zip/localix-grammar.zip . && cd .. && unzip -tq dist-zip/localix-grammar.zip && shasum -a 256 dist-zip/localix-grammar.zip > dist-zip/localix-grammar.zip.sha256"
   },
   "author": "Localix <hello@localix.ai> (https://localix.ai)",
   "license": "MIT",
   "homepage": "https://localix.ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/localix/extension"
+    "url": "https://github.com/localixai/grammar"
   },
   "keywords": [
     "grammar",
@@ -28,16 +35,27 @@
     "openrouter"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22.19"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@playwright/test": "1.60.0",
     "@types/chrome": "^0.1.42",
+    "@types/node": "26.1.2",
     "@typescript-eslint/eslint-plugin": "^8.60.1",
     "@typescript-eslint/parser": "^8.60.1",
+    "@vitest/coverage-v8": "4.1.9",
     "eslint": "^10.4.1",
     "eslint-config-prettier": "^10.1.8",
+    "happy-dom": "20.10.6",
     "prettier": "^3.8.3",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "4.1.9"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.2.8",
+    "@openrouter/sdk": "1.2.2",
+    "diff": "9.0.0"
   }
 }

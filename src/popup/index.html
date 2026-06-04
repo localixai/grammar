@@ -1,710 +1,175 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
     <title>Localix Grammar</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      /* ── Design tokens ── */
-      :root {
-        --bg: oklch(0.12 0 0);
-        --fg: oklch(0.98 0 0);
-        --card: oklch(0.14 0 0);
-        --border: rgba(255, 255, 255, 0.08);
-        --primary: oklch(0.98 0 0);
-        --primary-fg: oklch(0.12 0 0);
-        --muted: rgba(255, 255, 255, 0.04);
-        --muted-fg: rgba(255, 255, 255, 0.45);
-        --radius: 10px;
-        --radius-sm: 6px;
-        --surface-hover: rgba(255, 255, 255, 0.06);
-        --text-strong: rgba(255, 255, 255, 0.92);
-        --text-soft: rgba(255, 255, 255, 0.6);
-        --text-faint: rgba(255, 255, 255, 0.32);
-        --success: #4ade80;
-        --success-soft: rgba(74, 222, 128, 0.08);
-        --success-border: rgba(74, 222, 128, 0.2);
-        --danger: #ef4444;
-        --danger-soft: rgba(239, 68, 68, 0.08);
-        --danger-border: rgba(239, 68, 68, 0.2);
-        --font: "Inter", system-ui, -apple-system, sans-serif;
-        color-scheme: dark;
-      }
-      [data-theme="light"] {
-        --bg: oklch(0.985 0 0);
-        --fg: oklch(0.15 0 0);
-        --card: oklch(1 0 0);
-        --border: rgba(0, 0, 0, 0.08);
-        --primary: oklch(0.15 0 0);
-        --primary-fg: oklch(0.98 0 0);
-        --muted: rgba(0, 0, 0, 0.03);
-        --muted-fg: rgba(0, 0, 0, 0.45);
-        --surface-hover: rgba(0, 0, 0, 0.05);
-        --text-strong: rgba(0, 0, 0, 0.9);
-        --text-soft: rgba(0, 0, 0, 0.58);
-        --text-faint: rgba(0, 0, 0, 0.32);
-        --success: #16a34a;
-        --success-soft: rgba(22, 163, 74, 0.08);
-        --success-border: rgba(22, 163, 74, 0.2);
-        --danger: #dc2626;
-        --danger-soft: rgba(220, 38, 38, 0.08);
-        --danger-border: rgba(220, 38, 38, 0.2);
-        color-scheme: light;
-      }
-
-      /* ── Animations ── */
-      @keyframes bird-intro {
-        from {
-          opacity: 0;
-          transform: scale(0.92);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1);
-        }
-      }
-      @keyframes bird-drift {
-        0% {
-          transform: translate3d(0, 0, 0) scale(1);
-        }
-        25% {
-          transform: translate3d(0, -6px, 0) scale(1.01);
-        }
-        50% {
-          transform: translate3d(0, 0, 0) scale(1);
-        }
-        75% {
-          transform: translate3d(0, 4px, 0) scale(0.99);
-        }
-        100% {
-          transform: translate3d(0, 0, 0) scale(1);
-        }
-      }
-      @keyframes wind-sweep {
-        0% {
-          opacity: 0;
-          transform: translate3d(60px, 0, 0);
-        }
-        15% {
-          opacity: var(--wind-peak, 0.22);
-        }
-        75% {
-          opacity: var(--wind-peak, 0.18);
-        }
-        100% {
-          opacity: 0;
-          transform: translate3d(-100px, 0, 0);
-        }
-      }
-      @keyframes fade-up {
-        from {
-          opacity: 0;
-          transform: translateY(6px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      /* ── Reset ── */
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-
-      body {
-        width: 300px;
-        background: var(--bg);
-        color: var(--fg);
-        font-family: var(--font);
-        font-size: 13px;
-        -webkit-font-smoothing: antialiased;
-      }
-
-      /* ── Hero ── */
-      .hero {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 28px 20px 20px;
-        border-bottom: 1px solid var(--border);
-        gap: 10px;
-      }
-      .bird-scene {
-        position: relative;
-        width: 88px;
-        height: 88px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: visible;
-        animation: bird-intro 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
-      }
-      .bird-wrap {
-        position: relative;
-        z-index: 2;
-        width: 64px;
-        height: 64px;
-        animation: bird-drift 6s ease-in-out infinite;
-      }
-      .bird-wrap img {
-        width: 100%;
-        height: 100%;
-      }
-      .bird-wrap img.logo-dark {
-        display: block;
-      }
-      .bird-wrap img.logo-light {
-        display: none;
-      }
-      [data-theme="light"] .bird-wrap img.logo-dark {
-        display: none;
-      }
-      [data-theme="light"] .bird-wrap img.logo-light {
-        display: block;
-      }
-
-      /* Wind speed lines */
-      .wind-line {
-        position: absolute;
-        border-radius: 999px;
-        z-index: 1;
-        pointer-events: none;
-        animation: wind-sweep linear infinite;
-        animation-delay: var(--wd, 0s);
-        animation-duration: var(--ws, 2.2s);
-        width: var(--ww, 32px);
-        height: var(--wh, 1.4px);
-        top: var(--wt, 50%);
-        left: 0;
-        right: 0;
-        margin: auto;
-        --wind-peak: var(--wo, 0.22);
-      }
-      .wind-line {
-        background: linear-gradient(
-          90deg,
-          transparent 5%,
-          rgba(106, 219, 239, 0.35) 50%,
-          transparent 95%
-        );
-      }
-      [data-theme="light"] .wind-line {
-        background: linear-gradient(
-          90deg,
-          transparent 5%,
-          rgba(30, 120, 160, 0.45) 50%,
-          transparent 95%
-        );
-      }
-
-      .brand {
-        text-align: center;
-        animation: fade-up 0.4s ease 0.15s both;
-      }
-      .brand-name {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--text-strong);
-        letter-spacing: -0.3px;
-      }
-      .brand-sub {
-        font-size: 11px;
-        color: var(--text-faint);
-        margin-top: 2px;
-      }
-
-      /* ── Content ── */
-      .content {
-        padding: 14px 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        animation: fade-up 0.4s ease 0.25s both;
-      }
-
-      /* ── Status badge ── */
-      .status {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 9px 12px;
-        border-radius: var(--radius);
-        border: 1px solid var(--control-border);
-        background: var(--surface-hover);
-        font-size: 12px;
-        color: var(--text-soft);
-      }
-      .status.connected {
-        border-color: var(--green-border);
-        background: var(--green-soft);
-        color: var(--green);
-      }
-      .dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: currentColor;
-        flex-shrink: 0;
-      }
-
-      /* ── Buttons ── */
-      .btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 7px;
-        width: 100%;
-        padding: 9px 16px;
-        border-radius: var(--radius);
-        font-size: 13px;
-        font-weight: 500;
-        font-family: var(--font);
-        cursor: pointer;
-        border: 1px solid transparent;
-        transition:
-          background 0.15s,
-          opacity 0.15s;
-      }
-      .btn-primary {
-        background: var(--primary);
-        color: var(--primary-fg);
-        border-color: var(--primary);
-      }
-      .btn-primary:hover {
-        opacity: 0.85;
-      }
-      .btn-ghost {
-        background: transparent;
-        color: var(--destructive);
-        border-color: rgba(239, 68, 68, 0.25);
-        font-size: 12px;
-        padding: 7px 14px;
-      }
-      .btn-ghost:hover {
-        background: rgba(239, 68, 68, 0.06);
-      }
-
-      /* ── Row / Toggle ── */
-      .row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 2px 0;
-      }
-      .row-label {
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--text-soft);
-      }
-      .toggle {
-        position: relative;
-        width: 36px;
-        height: 20px;
-        cursor: pointer;
-      }
-      .toggle input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-      }
-      .slider {
-        position: absolute;
-        inset: 0;
-        background: var(--muted);
-        border-radius: 999px;
-        transition: background 0.2s;
-      }
-      .slider::before {
-        content: "";
-        position: absolute;
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        background: white;
-        top: 3px;
-        left: 3px;
-        transition: transform 0.2s;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-      }
-      .toggle input:checked + .slider {
-        background: #22c55e;
-      }
-      .toggle input:checked + .slider::before {
-        transform: translateX(16px);
-      }
-
-      /* ── Select ── */
-      .select-wrap {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-      .select-label {
-        font-size: 11px;
-        font-weight: 500;
-        color: var(--text-faint);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-      .model-trigger {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        padding: 8px 12px;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--control-border);
-        background: var(--surface-hover);
-        color: var(--text-strong);
-        font-size: 12px;
-        font-family: var(--font);
-        cursor: pointer;
-        outline: none;
-        transition:
-          border-color 0.15s,
-          background 0.15s;
-        text-align: left;
-      }
-      .model-trigger:hover,
-      .model-trigger:focus {
-        border-color: var(--text-faint);
-        background: rgba(255, 255, 255, 0.08);
-      }
-      [data-theme="light"] .model-trigger:hover,
-      [data-theme="light"] .model-trigger:focus {
-        background: rgba(0, 0, 0, 0.04);
-      }
-
-      .icon-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: var(--text-soft);
-        padding: 6px;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition:
-          background 0.12s,
-          color 0.12s;
-      }
-      .icon-btn:hover {
-        background: var(--surface-hover);
-        color: var(--text-strong);
-      }
-
-      .search-wrap input {
-        width: 100%;
-        padding: 8px 12px;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--control-border);
-        background: var(--surface-hover);
-        color: var(--text-strong);
-        font-size: 12px;
-        font-family: var(--font);
-        outline: none;
-        transition: border-color 0.15s;
-      }
-      .search-wrap input:focus {
-        border-color: var(--text-faint);
-      }
-
-      .model-list {
-        max-height: 220px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding-right: 4px;
-        margin-top: 4px;
-      }
-      .model-list::-webkit-scrollbar {
-        width: 4px;
-      }
-      .model-list::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      .model-list::-webkit-scrollbar-thumb {
-        background: var(--border);
-        border-radius: 99px;
-      }
-
-      .model-item {
-        display: flex;
-        flex-direction: column;
-        padding: 8px 10px;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background 0.12s;
-        text-align: left;
-        border: none;
-        background: transparent;
-        font-family: var(--font);
-        width: 100%;
-      }
-      .model-item:hover {
-        background: var(--surface-hover);
-      }
-      .model-item.selected {
-        background: var(--green-soft);
-      }
-      .model-item.selected .model-item-name {
-        color: var(--green);
-      }
-      .model-item-name {
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--text-strong);
-      }
-      .model-item-id {
-        font-size: 10px;
-        color: var(--text-faint);
-        margin-top: 1px;
-        word-break: break-all;
-      }
-
-      /* ── Separator ── */
-      .separator {
-        height: 1px;
-        background: var(--border);
-        margin: 2px 0;
-      }
-
-      /* ── Footer ── */
-      .footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 16px 12px;
-        border-top: 1px solid var(--border);
-      }
-      .footer-link {
-        font-size: 11px;
-        color: var(--text-faint);
-        text-decoration: none;
-        transition: color 0.15s;
-      }
-      .footer-link:hover {
-        color: var(--text-soft);
-      }
-
-      /* ── Theme toggle ── */
-      .theme-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: var(--text-faint);
-        font-size: 14px;
-        padding: 2px 4px;
-        border-radius: 4px;
-        transition: color 0.15s;
-        line-height: 1;
-      }
-      .theme-btn:hover {
-        color: var(--text-soft);
-      }
-
-      .hidden {
-        display: none !important;
-      }
-
-      /* ── Donate button ── */
-      .btn-donate {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        width: 100%;
-        padding: 8px 16px;
-        border-radius: var(--radius);
-        font-size: 12px;
-        font-weight: 500;
-        font-family: var(--font);
-        cursor: pointer;
-        border: 1px solid rgba(249, 115, 22, 0.35);
-        background: rgba(249, 115, 22, 0.08);
-        color: #f97316;
-        transition:
-          background 0.15s,
-          opacity 0.15s;
-        text-decoration: none;
-      }
-      .btn-donate:hover {
-        background: rgba(249, 115, 22, 0.16);
-      }
-    </style>
+    <link rel="stylesheet" href="./index.css" />
   </head>
   <body>
-    <!-- Hero section with bird animation -->
-    <div class="hero">
-      <div class="bird-scene">
-        <!-- Wind speed lines -->
-        <div
-          class="wind-line"
-          style="--wt: 28%; --ww: 28px; --wh: 1.2px; --ws: 2s; --wd: 0s; --wo: 0.2"
-        ></div>
-        <div
-          class="wind-line"
-          style="--wt: 36%; --ww: 42px; --wh: 1.6px; --ws: 2.4s; --wd: 0.3s; --wo: 0.28"
-        ></div>
-        <div
-          class="wind-line"
-          style="--wt: 44%; --ww: 22px; --wh: 1.3px; --ws: 1.8s; --wd: 0.8s; --wo: 0.18"
-        ></div>
-        <div
-          class="wind-line"
-          style="--wt: 52%; --ww: 36px; --wh: 1.5px; --ws: 2.6s; --wd: 0.2s; --wo: 0.25"
-        ></div>
-        <div
-          class="wind-line"
-          style="--wt: 58%; --ww: 30px; --wh: 1.2px; --ws: 2.1s; --wd: 0.6s; --wo: 0.22"
-        ></div>
-        <div
-          class="wind-line"
-          style="--wt: 65%; --ww: 24px; --wh: 1.4px; --ws: 1.9s; --wd: 1s; --wo: 0.16"
-        ></div>
-        <div
-          class="wind-line"
-          style="--wt: 72%; --ww: 38px; --wh: 1.3px; --ws: 2.8s; --wd: 0.4s; --wo: 0.2"
-        ></div>
-        <!-- Bird -->
-        <div class="bird-wrap">
-          <img class="logo-dark" src="/public/logo-dark.svg" alt="Localix" />
-          <img class="logo-light" src="/public/logo-light.svg" alt="Localix" />
-        </div>
-      </div>
-      <div class="brand">
-        <div class="brand-name">Localix Grammar</div>
-        <div class="brand-sub">localix.ai</div>
-      </div>
-    </div>
-
-    <div class="content">
-      <!-- Not connected state -->
-      <div id="notConnected">
-        <div style="display: flex; flex-direction: column; gap: 10px">
-          <div class="status">
-            <span class="dot"></span>
-            <span>Not connected</span>
+    <main class="shell">
+      <header class="topbar">
+        <div class="identity">
+          <span class="logo" aria-hidden="true">
+            <img class="logo-for-dark" src="/logo-dark.svg" alt="" width="34" height="34" />
+            <img class="logo-for-light" src="/logo-light.svg" alt="" width="34" height="34" />
+          </span>
+          <div>
+            <h1>Localix Grammar</h1>
+            <p>Writing intelligence</p>
           </div>
-          <button class="btn btn-primary" id="connectBtn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"
-              />
-            </svg>
-            Connect with OpenRouter
-          </button>
-          <div
-            id="connectError"
-            class="hidden"
-            style="font-size: 11px; color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger-border); border-radius: var(--radius-sm); padding: 8px 10px; line-height: 1.5"
-          ></div>
-          <p
-            style="font-size: 11px; color: var(--text-faint); text-align: center; line-height: 1.5"
-          >
-            Authorize once — no manual API key needed.
+        </div>
+        <button
+          id="themeButton"
+          class="icon-button"
+          type="button"
+          aria-label="Change theme"
+        ></button>
+      </header>
+      <p id="popupAlert" class="popup-alert hidden" role="alert"></p>
+
+      <section id="loadingView" class="view status-view" aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Loading Grammar…</p>
+      </section>
+
+      <section id="connectView" class="view connect-view hidden">
+        <div class="connect-intro">
+          <span class="eyebrow">DIRECT TO OPENROUTER</span>
+          <h2>Your model. Your writing.</h2>
+          <p>
+            Check the active editor with your chosen model. Text goes directly from this browser to
+            OpenRouter. Localix runs no proxy and stores no writing.
           </p>
         </div>
-      </div>
-
-      <!-- Connected state -->
-      <div id="connected" class="hidden">
-        <div style="display: flex; flex-direction: column; gap: 10px">
-          <div class="status connected">
-            <span class="dot"></span>
-            <span>Connected to OpenRouter</span>
-          </div>
-
-          <div class="row">
-            <span class="row-label">Enable on all sites</span>
-            <label class="toggle">
-              <input type="checkbox" id="enabled" checked />
-              <span class="slider"></span>
-            </label>
-          </div>
-
-          <div class="separator"></div>
-
-          <div class="select-wrap">
-            <label class="select-label">Model</label>
-            <button class="model-trigger" id="modelTriggerBtn" type="button">
-              <span id="currentModelName">Loading…</span>
-              <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-                <path
-                  d="M1 1L5 5L9 1"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <div class="separator"></div>
-
-          <button class="btn btn-ghost" id="disconnectBtn">Disconnect</button>
-        </div>
-      </div>
-
-      <!-- Model Selection Screen -->
-      <div id="modelSelectScreen" class="hidden">
-        <div style="display: flex; flex-direction: column; gap: 10px">
-          <!-- Header with back button -->
-          <div style="display: flex; align-items: center; gap: 8px">
-            <button class="icon-btn" id="modelBackBtn" title="Back" type="button">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+        <div class="connect-actions">
+          <button id="connectButton" class="button primary" type="button">
+            Continue with OpenRouter
+          </button>
+          <button
+            id="tokenToggleButton"
+            class="button secondary"
+            type="button"
+            aria-expanded="false"
+            aria-controls="tokenPanel"
+          >
+            Use API key
+          </button>
+          <form id="tokenPanel" class="token-panel hidden">
+            <label for="apiKeyInput">OpenRouter API key</label>
+            <div class="token-field">
+              <input
+                id="apiKeyInput"
+                type="password"
+                placeholder="sk-or-v1-…"
+                autocomplete="new-password"
+                autocapitalize="none"
+                spellcheck="false"
+                required
+              />
+              <button
+                id="tokenVisibilityButton"
+                class="token-visibility"
+                type="button"
+                aria-label="Show API key"
               >
-                <line x1="19" y1="12" x2="5" y2="12"></line>
-                <polyline points="12 19 5 12 12 5"></polyline>
-              </svg>
+                Show
+              </button>
+            </div>
+            <button id="connectTokenButton" class="button primary token-submit" type="submit">
+              Connect with API key
             </button>
-            <span style="font-weight: 600; font-size: 13px; color: var(--text-strong)"
-              >Select Model</span
-            >
-          </div>
-
-          <!-- Search Input -->
-          <div class="search-wrap">
-            <input
-              type="text"
-              id="modelSearchInput"
-              placeholder="Search models..."
-              autocomplete="off"
-            />
-          </div>
-
-          <!-- Scrollable list of models -->
-          <div class="model-list" id="modelList"></div>
+            <p class="token-note">Verified with OpenRouter, then stored only on this device.</p>
+          </form>
         </div>
-      </div>
-    </div>
+        <p id="connectError" class="error hidden" role="alert"></p>
+      </section>
 
-    <div class="footer">
-      <a href="https://localix.ai" class="footer-link" target="_blank">localix.ai</a>
-      <button class="theme-btn" id="themeBtn" title="Toggle theme">☀︎</button>
-    </div>
+      <section id="settingsView" class="view hidden">
+        <div class="connection-row">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div>
+            <strong>OpenRouter connected</strong>
+            <span>Direct connection</span>
+          </div>
+          <button id="disconnectButton" class="text-button danger" type="button">Disconnect</button>
+        </div>
 
+        <div class="section-label">CHECKING</div>
+        <div class="settings-card">
+          <label class="setting-row">
+            <span>
+              <strong>Grammar everywhere</strong>
+              <small>Enable Localix across supported sites</small>
+            </span>
+            <input id="enabledToggle" class="switch-input" type="checkbox" />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <label class="setting-row">
+            <span>
+              <strong>Check while typing</strong>
+              <small>Review after a short pause</small>
+            </span>
+            <input id="autoCheckToggle" class="switch-input" type="checkbox" />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <label id="siteSetting" class="setting-row">
+            <span>
+              <strong id="siteTitle">This site</strong>
+              <small id="siteSubtitle">Use Grammar on this site</small>
+            </span>
+            <input id="siteToggle" class="switch-input" type="checkbox" />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+        </div>
+
+        <div class="section-label">MODEL</div>
+        <button id="modelButton" class="model-button" type="button">
+          <span class="model-copy">
+            <strong id="modelName">Loading model…</strong>
+            <small id="modelId"></small>
+          </span>
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m7 4 6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.5" />
+          </svg>
+        </button>
+      </section>
+
+      <section id="modelsView" class="view hidden">
+        <div class="model-header">
+          <button id="modelsBackButton" class="icon-button" type="button" aria-label="Back">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="m12.5 4-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+          </button>
+          <div>
+            <h2>Choose a model</h2>
+            <p>Live OpenRouter model catalog</p>
+          </div>
+        </div>
+        <label class="search">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <circle cx="8.5" cy="8.5" r="5" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path d="m12.2 12.2 4 4" stroke="currentColor" stroke-width="1.5" />
+          </svg>
+          <input
+            id="modelSearch"
+            type="search"
+            placeholder="Search models"
+            aria-label="Search models"
+            autocomplete="off"
+          />
+        </label>
+        <div id="modelList" class="model-list" role="region" aria-label="Available models"></div>
+      </section>
+
+      <footer>
+        <span>Localix</span>
+        <span class="footer-rule"></span>
+        <span>OpenRouter SDK</span>
+      </footer>
+    </main>
     <script type="module" src="./index.ts"></script>
   </body>
 </html>

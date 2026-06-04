@@ -1,65 +1,116 @@
+import { OpenRouterCore } from "@openrouter/sdk/core.js";
+import { modelsList } from "@openrouter/sdk/funcs/modelsList.js";
+
 import type { ModelInfo } from "../shared/types";
+import { OPENROUTER_APP } from "../shared/utils/openrouter-app";
 
-interface OpenRouterModel {
-  id: string;
-  name: string;
-  created?: number;
+const MODEL_CACHE_TTL_MS = 15 * 60 * 1_000;
+const MAX_CATALOG_MODELS = 1_000;
+
+export interface CatalogModel {
+  readonly id: string;
+  readonly name: string;
+  readonly contextLength: number | null;
+  readonly pricing: {
+    readonly prompt: string;
+    readonly completion: string;
+    readonly discount?: number | undefined;
+  };
+  readonly supportedParameters: readonly string[];
+}
+export type ModelCatalogLoader = () => Promise<readonly CatalogModel[]>;
+
+function costPerMillion(value: string, discount = 0): number | undefined {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0) return undefined;
+  const boundedDiscount = Number.isFinite(discount) ? Math.max(0, Math.min(1, discount)) : 0;
+  return amount * (1 - boundedDiscount) * 1_000_000;
 }
 
-interface OpenRouterModelsResponse {
-  data: OpenRouterModel[];
-}
-
-// Cache models for 10 minutes to avoid repeated API calls
-let cachedModels: ModelInfo[] | null = null;
-let cacheTimestamp = 0;
-const CACHE_TTL_MS = 10 * 60 * 1000;
-
-/**
- * Fetch available models from the OpenRouter /api/v1/models endpoint.
- * Results are cached for 10 minutes.
- */
-export async function fetchModels(apiKey?: string): Promise<ModelInfo[]> {
-  const now = Date.now();
-  if (cachedModels && now - cacheTimestamp < CACHE_TTL_MS) {
-    return cachedModels;
-  }
-
-  try {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://localix.ai",
-      "X-Title": "Localix Grammar",
-    };
-    if (apiKey) {
-      headers["Authorization"] = `Bearer ${apiKey}`;
+export function normalizeModelCatalog(catalog: readonly CatalogModel[]): ModelInfo[] {
+  const seen = new Set<string>();
+  const normalized: ModelInfo[] = [];
+  for (const model of catalog.slice(0, MAX_CATALOG_MODELS)) {
+    const id = model.id.trim();
+    const name = model.name.trim();
+    if (
+      !id ||
+      id.length > 200 ||
+      !name ||
+      name.length > 200 ||
+      /[\u0000-\u001f\u007f]/u.test(id + name) ||
+      seen.has(id) ||
+      !model.supportedParameters.includes("tools")
+    ) {
+      continue;
     }
-
-    const res = await fetch("https://openrouter.ai/api/v1/models", { headers });
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch models: HTTP ${res.status}`);
-    }
-
-    const json = (await res.json()) as OpenRouterModelsResponse;
-
-    const models: ModelInfo[] = json.data
-      .filter((m) => m.id && m.name)
-      .map((m) => ({ id: m.id, name: m.name, ...(m.created !== undefined && { created: m.created }) }))
-      .sort((a, b) => {
-        const timeA = a.created ?? 0;
-        const timeB = b.created ?? 0;
-        if (timeB !== timeA) {
-          return timeB - timeA; // Newest first
-        }
-        return a.name.localeCompare(b.name);
-      });
-
-    cachedModels = models;
-    cacheTimestamp = now;
-    return models;
-  } catch {
-    // On error, return empty list — the popup will show the current model as fallback
-    return cachedModels ?? [];
+    seen.add(id);
+    const discount = model.pricing.discount ?? 0;
+    const inputCostPerMillion = costPerMillion(model.pricing.prompt, discount);
+    const outputCostPerMillion = costPerMillion(model.pricing.completion, discount);
+    normalized.push({
+      id,
+      name,
+      ...(typeof model.contextLength === "number" &&
+      Number.isFinite(model.contextLength) &&
+      model.contextLength > 0
+        ? { contextWindow: Math.round(model.contextLength) }
+        : {}),
+      ...(inputCostPerMillion === undefined ? {} : { inputCostPerMillion }),
+      ...(outputCostPerMillion === undefined ? {} : { outputCostPerMillion }),
+    });
   }
+  return normalized.sort((a, b) => a.name.localeCompare(b.name));
 }
+
+async function loadOfficialCatalog(): Promise<readonly CatalogModel[]> {
+  const client = new OpenRouterCore({
+    ...OPENROUTER_APP,
+    retryConfig: {
+      strategy: "backoff",
+      backoff: {
+        initialInterval: 500,
+        maxInterval: 4_000,
+        exponent: 2,
+        maxElapsedTime: 10_000,
+      },
+      retryConnectionErrors: true,
+    },
+    timeoutMs: 15_000,
+  });
+  const result = await modelsList(client, {
+    limit: 1_000,
+    outputModalities: "text",
+    supportedParameters: "tools",
+  });
+  if (!result.ok) {
+    const message =
+      result.error instanceof Error && result.error.message
+        ? result.error.message
+        : "OpenRouter model catalog request failed.";
+    throw new Error(message);
+  }
+  return result.value.result.data;
+}
+
+export function createModelCatalogService(
+  loader: ModelCatalogLoader,
+  now: () => number = Date.now,
+): () => Promise<ModelInfo[]> {
+  let cached: ModelInfo[] | undefined;
+  let expiresAt = 0;
+  return async (): Promise<ModelInfo[]> => {
+    if (cached && now() < expiresAt) return cached.map((model) => ({ ...model }));
+    try {
+      const fresh = normalizeModelCatalog(await loader());
+      if (fresh.length === 0) throw new Error("OpenRouter returned no tool-capable models.");
+      cached = fresh;
+      expiresAt = now() + MODEL_CACHE_TTL_MS;
+    } catch (error) {
+      if (!cached) throw error;
+    }
+    return cached.map((model) => ({ ...model }));
+  };
+}
+
+export const listModels = createModelCatalogService(loadOfficialCatalog);
