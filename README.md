@@ -17,10 +17,21 @@ Localix Grammar checks spelling, grammar, punctuation, and style directly in sup
 editors. It uses OpenRouter, preserves rich-text formatting, and keeps credentials away from page
 scripts.
 
+## Preview
+
+<p align="center">
+  <img src="store-assets/screenshots/05-corrected-text-closeup.jpg" width="820" alt="Corrected text with highlighted improvements">
+</p>
+
+<p align="center">
+  <img src="store-assets/screenshots/01-connect-openrouter.jpg" width="49%" alt="Connect Localix Grammar to OpenRouter">
+  <img src="store-assets/screenshots/03-settings.jpg" width="49%" alt="Localix Grammar settings">
+</p>
+
 ## Features
 
 - Manual and automatic checks in text fields and `contenteditable` editors
-- Safe application of individual corrections or all changes at once
+- One-click application of all suggested corrections
 - Per-site and global pause controls
 - Light, dark, and system themes
 - OpenRouter OAuth or API-key connection

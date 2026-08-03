@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Localix Grammar promo tiles</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: #202020;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .tile {
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 86% 14%, rgba(105, 192, 127, 0.11), transparent 27%),
+          radial-gradient(circle at 12% 92%, rgba(90, 137, 230, 0.1), transparent 30%), #080808;
+        color: #f7f7f7;
+      }
+
+      .tile::after {
+        position: absolute;
+        inset: 0;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        content: "";
+        pointer-events: none;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .brand img {
+        width: 42px;
+        height: 42px;
+        object-fit: contain;
+      }
+
+      .brand-name {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .eyebrow {
+        color: #9a9a9a;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .small {
+        width: 440px;
+        height: 280px;
+        padding: 30px 32px;
+      }
+
+      .small h1 {
+        width: 330px;
+        margin: 40px 0 12px;
+        font-size: 38px;
+        line-height: 0.98;
+        letter-spacing: -0.045em;
+      }
+
+      .small p {
+        margin: 0;
+        color: #a8a8a8;
+        font-size: 14px;
+      }
+
+      .correction-pill {
+        position: absolute;
+        right: 30px;
+        bottom: 28px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 11px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.04);
+        color: #7fcb91;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .correction-pill span {
+        color: #646464;
+        text-decoration: line-through;
+      }
+
+      .marquee {
+        width: 1400px;
+        height: 560px;
+        display: flex;
+        align-items: center;
+        padding: 66px 72px;
+      }
+
+      .marquee-copy {
+        position: relative;
+        z-index: 2;
+        width: 540px;
+        flex: none;
+      }
+
+      .marquee .brand img {
+        width: 50px;
+        height: 50px;
+      }
+
+      .marquee .brand-name {
+        font-size: 23px;
+      }
+
+      .marquee h1 {
+        margin: 58px 0 22px;
+        font-size: 65px;
+        line-height: 0.96;
+        letter-spacing: -0.055em;
+      }
+
+      .marquee-copy > p {
+        max-width: 470px;
+        margin: 0;
+        color: #aaa;
+        font-size: 20px;
+        line-height: 1.5;
+      }
+
+      .tags {
+        display: flex;
+        gap: 9px;
+        margin-top: 30px;
+      }
+
+      .tag {
+        padding: 8px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.035);
+        color: #b9b9b9;
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .product-frame {
+        position: absolute;
+        top: 69px;
+        right: 54px;
+        width: 690px;
+        height: 422px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        background: #101010;
+        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.45);
+        transform: rotate(-1.5deg);
+      }
+
+      .product-frame img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+      }
+
+      .accent {
+        position: absolute;
+        right: 690px;
+        bottom: 74px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ff5874;
+        box-shadow: 0 0 28px rgba(255, 88, 116, 0.7);
+      }
+    </style>
+  </head>
+  <body>
+    <section id="small" class="tile small">
+      <div class="brand">
+        <img src="../../public/logo-dark.svg" alt="" />
+        <div class="brand-name">Localix Grammar</div>
+      </div>
+      <h1>Write better.<br />Everywhere.</h1>
+      <p>AI grammar, spelling &amp; style</p>
+      <div class="correction-pill"><span>are</span> → is</div>
+    </section>
+
+    <section id="marquee" class="tile marquee">
+      <div class="marquee-copy">
+        <div class="brand">
+          <img src="../../public/logo-dark.svg" alt="" />
+          <div>
+            <div class="brand-name">Localix Grammar</div>
+            <div class="eyebrow">Writing intelligence</div>
+          </div>
+        </div>
+        <h1>Your model.<br />Your writing.</h1>
+        <p>Precise AI corrections, directly in the editor where you already work.</p>
+        <div class="tags">
+          <span class="tag">Grammar</span>
+          <span class="tag">Spelling</span>
+          <span class="tag">Punctuation</span>
+          <span class="tag">Style</span>
+        </div>
+      </div>
+      <div class="product-frame">
+        <img src="../screenshots/05-corrected-text-closeup.jpg" alt="" />
+      </div>
+      <span class="accent"></span>
+    </section>
+  </body>
+</html>
