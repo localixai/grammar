@@ -59,19 +59,17 @@ describe("GrammarOverlay accessibility", () => {
 
     overlay.showResult(result([issue(), secondIssue()]));
     shadow.querySelector<HTMLButtonElement>(".apply-all")!.click();
-    shadow.querySelector<HTMLButtonElement>(".reject-all")!.click();
-    shadow.querySelector<HTMLButtonElement>(".review-toggle")!.click();
-    shadow.querySelector<HTMLButtonElement>(".reject")!.click();
     shadow.querySelector<HTMLButtonElement>(".icon-button")!.click();
 
     expect(callbacks.onCheck).not.toHaveBeenCalled();
     expect(callbacks.onApplyAll).toHaveBeenCalledOnce();
-    expect(callbacks.onRejectAll).toHaveBeenCalledOnce();
-    expect(callbacks.onIgnore).toHaveBeenCalledWith(issue());
+    expect(callbacks.onApply).not.toHaveBeenCalled();
+    expect(callbacks.onRejectAll).not.toHaveBeenCalled();
+    expect(callbacks.onIgnore).not.toHaveBeenCalled();
     expect(callbacks.onClose).toHaveBeenCalledOnce();
   });
 
-  test("shows a batch-first corrected preview with optional compact details", () => {
+  test("shows one corrected preview with highlighted replacements", () => {
     const overlay = new GrammarOverlay({
       onCheck: vi.fn(),
       onApply: vi.fn(),
@@ -84,23 +82,21 @@ describe("GrammarOverlay accessibility", () => {
 
     overlay.showResult(result([issue(), secondIssue()]));
     expect(shadow.querySelector(".summary-count")?.textContent).toBe("2 improvements");
-    expect(shadow.querySelector(".preview")?.textContent).toBe("This is a example.");
-    expect(shadow.querySelector(".apply-all")?.textContent).toBe("Accept all");
-    expect(shadow.querySelector(".reject-all")?.textContent).toBe("Reject all");
-    expect(shadow.querySelector(".details")).toBeNull();
-
-    shadow.querySelector<HTMLButtonElement>(".review-toggle")!.click();
-    expect(shadow.querySelectorAll(".detail")).toHaveLength(2);
-    expect(shadow.querySelectorAll(".diff-code")).toHaveLength(2);
-    expect(shadow.querySelector(".diff-line.removed")?.textContent).toBe("−are");
-    expect(shadow.querySelector(".diff-line.added")?.textContent).toBe("+is");
-    expect(shadow.querySelector(".review-toggle")?.textContent).toBe("Hide changes");
+    expect(shadow.querySelector(".corrected-preview")?.textContent).toBe("This is a example.");
+    expect(
+      [...shadow.querySelectorAll(".correction")].map((element) => element.textContent),
+    ).toEqual(["is", "example"]);
+    expect(shadow.querySelector(".apply-all")?.textContent).toBe("Apply all");
+    expect(shadow.querySelector(".apply-all")?.getAttribute("aria-label")).toBe("Accept all");
+    expect(shadow.querySelector(".suggestion-card")).toBeNull();
+    expect(shadow.querySelector(".diff-code")).toBeNull();
 
     overlay.showResult({
-      ...result([secondIssue()]),
+      ...result([{ ...secondIssue(), offset: 10 }]),
       originalText: "This is a test.",
     });
-    expect(shadow.querySelector(".details")).not.toBeNull();
+    expect(shadow.querySelector(".summary-count")?.textContent).toBe("1 improvement");
+    expect(shadow.querySelector(".corrected-preview")?.textContent).toBe("This is a example.");
   });
 
   test("ignores script-generated trigger activation", () => {
@@ -143,25 +139,24 @@ describe("GrammarOverlay accessibility", () => {
     expect(overlay.host.style.getPropertyValue("display")).toBe("block");
   });
 
-  test("gives hunk actions specific accessible names", () => {
-    const onApply = vi.fn();
+  test("gives the batch action a specific accessible name", () => {
+    const onApplyAll = vi.fn();
     const overlay = new GrammarOverlay({
       onCheck: vi.fn(),
-      onApply,
-      onApplyAll: vi.fn(),
+      onApply: vi.fn(),
+      onApplyAll,
       onRejectAll: vi.fn(),
       onIgnore: vi.fn(),
       onClose: vi.fn(),
     });
-    const replacement = overlay.host.shadowRoot!.querySelector<HTMLButtonElement>(".accept");
+    const replacement = overlay.host.shadowRoot!.querySelector<HTMLButtonElement>(".apply-all");
 
     expect(replacement).toBeNull();
     overlay.showResult(result([issue()]));
-    overlay.host.shadowRoot!.querySelector<HTMLButtonElement>(".review-toggle")!.click();
-    const rendered = overlay.host.shadowRoot!.querySelector<HTMLButtonElement>(".accept")!;
-    expect(rendered.getAttribute("aria-label")).toBe("Accept change 1");
+    const rendered = overlay.host.shadowRoot!.querySelector<HTMLButtonElement>(".apply-all")!;
+    expect(rendered.getAttribute("aria-label")).toBe("Accept all");
     rendered.click();
-    expect(onApply).toHaveBeenCalledWith(issue(), "is");
+    expect(onApplyAll).toHaveBeenCalledOnce();
   });
 
   test("restores focus when an action rerenders or closes the dialog", () => {

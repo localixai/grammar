@@ -131,8 +131,7 @@ const STYLE = `
     display: flex;
     align-items: center;
     gap: 9px;
-    padding: 8px 10px 8px 12px;
-    border-bottom: 1px solid var(--border);
+    padding: 10px 10px 7px 12px;
   }
   .brand-mark {
     width: 22px;
@@ -147,7 +146,7 @@ const STYLE = `
   }
   .title-wrap { min-width: 0; flex: 1; }
   .title { font-weight: 650; font-size: 13px; }
-  .icon-button, .ghost, .primary, .hunk-action {
+  .icon-button, .primary {
     border: 1px solid transparent;
     border-radius: 7px;
     cursor: pointer;
@@ -162,96 +161,47 @@ const STYLE = `
   }
   .icon-button:hover { background: var(--surface-hover); color: var(--text-strong); }
   .body { overflow-y: auto; }
-  .summary { padding: 14px; }
+  .summary { padding: 7px 14px 14px; }
   .summary-head {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 9px;
+    margin-bottom: 11px;
   }
-  .summary-count { color: var(--text-strong); font-size: 12px; font-weight: 650; }
-  .preview {
-    max-height: 92px;
-    overflow: hidden;
-    padding: 10px 11px;
-    border-radius: 8px;
-    background: var(--card);
-    color: var(--text-strong);
-    font-size: 13px;
-    line-height: 1.5;
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
-  }
-  .primary, .ghost { min-height: 32px; padding: 6px 10px; font-size: 12px; font-weight: 600; }
-  .primary { background: var(--primary); color: var(--primary-fg); }
-  .primary:hover { opacity: .86; }
-  .ghost { border-color: var(--border); background: transparent; color: var(--text-soft); }
-  .ghost:hover { background: var(--surface-hover); color: var(--text-strong); }
-  .batch-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 7px;
-    margin-top: 10px;
-  }
-  .apply-all, .reject-all { min-height: 36px; }
-  .review-toggle {
-    width: 100%;
-    min-height: 30px;
-    margin-top: 4px;
-    border: 0;
-    border-radius: 7px;
-    background: transparent;
-    color: var(--text-faint);
-    font: 600 11px/1 var(--font);
-    cursor: pointer;
-  }
-  .review-toggle:hover { background: var(--surface-hover); color: var(--text-strong); }
-  .details { border-top: 1px solid var(--border); }
-  .detail { padding: 11px 14px 12px; }
-  .detail + .detail { border-top: 1px solid var(--border); }
-  .detail-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--error); }
-  .rule { flex: 1; color: var(--text-strong); font-size: 12px; font-weight: 650; }
-  .hunk-actions {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-  .hunk-action {
-    min-height: 26px;
-    padding: 4px 8px;
-    border-color: var(--border);
-    background: transparent;
+  .summary-count {
     color: var(--text-soft);
     font-size: 11px;
     font-weight: 600;
   }
-  .hunk-action:hover { background: var(--surface-hover); color: var(--text-strong); }
-  .hunk-action.accept { color: var(--success); }
-  .diff-code {
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: 8px;
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--error); }
+  .corrected-preview {
+    max-height: 152px;
+    overflow-y: auto;
+    padding: 12px;
+    border-radius: 10px;
     background: var(--card);
-    font: 11.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  }
-  .diff-line {
-    display: grid;
-    grid-template-columns: 22px minmax(0, 1fr);
-    min-height: 27px;
-    padding: 4px 8px 4px 0;
-    white-space: pre-wrap;
+    color: var(--text-strong);
+    font-size: 12px;
+    line-height: 1.55;
     overflow-wrap: anywhere;
+    white-space: pre-wrap;
   }
-  .diff-line + .diff-line { border-top: 1px solid color-mix(in oklch, var(--border), transparent 35%); }
-  .diff-sign { text-align: center; user-select: none; }
-  .diff-line.removed {
-    background: color-mix(in oklch, var(--error), transparent 91%);
-    color: color-mix(in oklch, var(--error), var(--text-strong) 38%);
+  .correction {
+    margin: 0 -1px;
+    padding: 1px 2px;
+    border-radius: 3px;
+    background: color-mix(in oklch, var(--success), transparent 82%);
+    color: color-mix(in oklch, var(--success), var(--text-strong) 24%);
+    font-weight: 600;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
   }
-  .diff-line.added {
-    background: color-mix(in oklch, var(--success), transparent 91%);
-    color: color-mix(in oklch, var(--success), var(--text-strong) 30%);
+  .primary { min-height: 38px; padding: 7px 12px; font-size: 11.5px; font-weight: 650; }
+  .primary { background: var(--primary); color: var(--primary-fg); }
+  .primary:hover { opacity: .86; }
+  .apply-all {
+    width: 100%;
+    margin-top: 10px;
   }
   .empty, .status-view { padding: 28px 20px; text-align: center; color: var(--text-soft); overflow-wrap: anywhere; }
   .empty-icon { width: 34px; height: 34px; margin: 0 auto 9px; color: var(--success); }
@@ -296,20 +246,31 @@ function button(label: string, className: string, onClick: () => void): HTMLButt
   return element;
 }
 
-function correctedText(result: CheckResult): string {
-  let text = result.originalText;
-  const errors = [...result.errors].sort((a, b) => b.offset - a.offset);
+function correctedPreview(result: CheckResult): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+  const errors = [...result.errors].sort((a, b) => a.offset - b.offset);
+  let cursor = 0;
   for (const error of errors) {
     const replacement = error.replacements[0];
+    const end = error.offset + error.length;
     if (
       replacement === undefined ||
-      text.slice(error.offset, error.offset + error.length) !== error.original
+      error.offset < cursor ||
+      result.originalText.slice(error.offset, end) !== error.original
     ) {
       continue;
     }
-    text = text.slice(0, error.offset) + replacement + text.slice(error.offset + error.length);
+    fragment.append(document.createTextNode(result.originalText.slice(cursor, error.offset)));
+    if (replacement) {
+      const mark = document.createElement("mark");
+      mark.className = "correction";
+      mark.textContent = replacement;
+      fragment.append(mark);
+    }
+    cursor = end;
   }
-  return text;
+  fragment.append(document.createTextNode(result.originalText.slice(cursor)));
+  return fragment;
 }
 
 export class GrammarOverlay {
@@ -324,8 +285,6 @@ export class GrammarOverlay {
   private state: OverlayState = "idle";
   private theme: ThemeMode = "system";
   private panelOpen = false;
-  private detailsOpen = false;
-  private resultIdentity = "";
   private pointerInteraction = false;
   private readonly onColorSchemeChange = (): void => {
     if (this.theme === "system") this.applyResolvedTheme();
@@ -414,7 +373,7 @@ export class GrammarOverlay {
     const title = document.createElement("div");
     title.id = "localix-grammar-title";
     title.className = "title";
-    title.textContent = "Localix Grammar";
+    title.textContent = "Corrected text";
     titleWrap.append(title);
     const close = button("×", "icon-button", () => this.callbacks.onClose());
     close.setAttribute("aria-label", "Close suggestions");
@@ -490,9 +449,6 @@ export class GrammarOverlay {
 
   showResult(result: CheckResult): void {
     const restoreFocus = this.panelHasFocus();
-    const identity = String(result.checkedAt);
-    if (identity !== this.resultIdentity) this.detailsOpen = false;
-    this.resultIdentity = identity;
     this.renderResult(result, restoreFocus);
   }
 
@@ -526,42 +482,21 @@ export class GrammarOverlay {
       result.errors.length === 1 ? "improvement" : "improvements"
     }`;
     summaryHead.append(dot, count);
+
     const preview = document.createElement("div");
-    preview.className = "preview";
-    const corrected = correctedText(result);
-    preview.textContent = corrected.length > 420 ? `${corrected.slice(0, 419)}…` : corrected;
-    const actions = document.createElement("div");
-    actions.className = "batch-actions";
-    const applyAll = button("Accept all", "primary apply-all", () => this.callbacks.onApplyAll());
-    const rejectAll = button("Reject all", "ghost reject-all", () => this.callbacks.onRejectAll());
-    actions.append(applyAll, rejectAll);
-    const toggle = button(
-      this.detailsOpen ? "Hide changes" : "Review changes",
-      "review-toggle",
-      () => {
-        this.detailsOpen = !this.detailsOpen;
-        this.renderResult(result, false);
-        this.shadow
-          .querySelector<HTMLButtonElement>(".review-toggle")
-          ?.focus({ preventScroll: true });
-      },
-    );
-    toggle.setAttribute("aria-expanded", String(this.detailsOpen));
-    summary.append(summaryHead, preview, actions, toggle);
+    preview.className = "corrected-preview";
+    preview.setAttribute("role", "region");
+    preview.setAttribute("aria-label", "Corrected text preview");
+    preview.append(correctedPreview(result));
+
+    const applyAll = button("Apply all", "primary apply-all", () => this.callbacks.onApplyAll());
+    applyAll.setAttribute("aria-label", "Accept all");
+
+    summary.append(summaryHead, preview, applyAll);
     this.body.appendChild(summary);
-    if (this.detailsOpen) {
-      const details = document.createElement("div");
-      details.className = "details";
-      result.errors.forEach((error, index) => details.appendChild(this.detailRow(error, index)));
-      this.body.appendChild(details);
-    }
     this.openPanel();
     if (restoreFocus) {
-      this.shadow
-        .querySelector<HTMLButtonElement>(".apply-all, .hunk-action, .review-toggle")
-        ?.focus({
-          preventScroll: true,
-        });
+      this.shadow.querySelector<HTMLButtonElement>(".apply-all")?.focus({ preventScroll: true });
     }
   }
 
@@ -673,48 +608,5 @@ export class GrammarOverlay {
     text.textContent = detail;
     view.append(strong, text);
     return view;
-  }
-
-  private detailRow(error: GrammarError, index: number): HTMLElement {
-    const row = document.createElement("article");
-    row.className = "detail";
-    const head = document.createElement("div");
-    head.className = "detail-head";
-    const rule = document.createElement("span");
-    rule.className = "rule";
-    rule.textContent = `Change ${index + 1}`;
-    const hunkActions = document.createElement("div");
-    hunkActions.className = "hunk-actions";
-
-    const primaryReplacement = error.replacements[0] ?? "";
-    const accept = button("Accept", "hunk-action accept", () =>
-      this.callbacks.onApply(error, primaryReplacement),
-    );
-    accept.setAttribute("aria-label", `Accept change ${index + 1}`);
-    const reject = button("Reject", "hunk-action reject", () => this.callbacks.onIgnore(error));
-    reject.setAttribute("aria-label", `Reject change ${index + 1}`);
-    hunkActions.append(accept, reject);
-    head.append(rule, hunkActions);
-
-    const diff = document.createElement("div");
-    diff.className = "diff-code";
-    diff.setAttribute("aria-label", `${error.shortMessage} diff`);
-    if (error.original) diff.appendChild(this.diffLine("removed", "−", error.original));
-    if (primaryReplacement) diff.appendChild(this.diffLine("added", "+", primaryReplacement));
-    row.append(head, diff);
-    return row;
-  }
-
-  private diffLine(kind: "removed" | "added", sign: string, value: string): HTMLElement {
-    const line = document.createElement("div");
-    line.className = `diff-line ${kind}`;
-    const prefix = document.createElement("span");
-    prefix.className = "diff-sign";
-    prefix.setAttribute("aria-hidden", "true");
-    prefix.textContent = sign;
-    const text = document.createElement("span");
-    text.textContent = value.replaceAll("\t", "→\t").replaceAll(" ", "·").replaceAll("\n", "↵\n");
-    line.append(prefix, text);
-    return line;
   }
 }

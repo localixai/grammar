@@ -41,7 +41,7 @@
   --success: oklch(0.74 0.16 155);
   --error: oklch(0.68 0.19 18);
   --ring: oklch(0.7 0 0);
-  --radius: 10px;
+  --radius: 12px;
   color-scheme: dark;
 }
 
@@ -102,12 +102,11 @@ input:focus-visible {
 }
 
 .topbar {
-  min-height: 66px;
+  min-height: 70px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 13px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 15px 18px;
 }
 
 .identity {
@@ -167,9 +166,9 @@ h1 {
   display: grid;
   place-items: center;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  background: var(--card);
   color: var(--text-soft);
   cursor: pointer;
 }
@@ -186,7 +185,7 @@ h1 {
 
 .view {
   flex: 1;
-  padding: 14px 16px 18px;
+  padding: 16px 18px 22px;
 }
 
 .hidden {
@@ -201,8 +200,8 @@ h1 {
   left: 12px;
   margin: 0;
   padding: 9px 11px;
-  border: 1px solid color-mix(in oklch, var(--error), transparent 55%);
-  border-radius: 8px;
+  border: 0;
+  border-radius: 10px;
   background: color-mix(in oklch, var(--error), var(--background) 88%);
   color: var(--text-strong);
   box-shadow: 0 8px 24px color-mix(in srgb, black, transparent 70%);
@@ -232,8 +231,8 @@ h1 {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-top: 24px;
-  padding-bottom: 24px;
+  padding-top: 34px;
+  padding-bottom: 48px;
 }
 
 .eyebrow,
@@ -244,8 +243,16 @@ h1 {
   letter-spacing: 0.08em;
 }
 
+.eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--card);
+}
+
 .connect-intro h2 {
-  margin-top: 10px;
+  margin-top: 14px;
   color: var(--text-strong);
   font-size: 24px;
   line-height: 1.12;
@@ -253,26 +260,26 @@ h1 {
 }
 
 .connect-intro p {
-  margin-top: 10px;
+  margin-top: 12px;
   color: var(--text-soft);
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .connect-actions {
   display: grid;
-  gap: 8px;
-  margin-top: 24px;
+  gap: 10px;
+  margin-top: 28px;
 }
 
 .button {
   width: 100%;
-  min-height: 38px;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 8px 13px;
   cursor: pointer;
   font-size: 12px;
@@ -285,8 +292,8 @@ h1 {
 }
 
 .button.secondary {
-  border: 1px solid var(--border-strong);
-  background: transparent;
+  border: 0;
+  background: var(--card);
   color: var(--text-strong);
 }
 
@@ -301,10 +308,11 @@ h1 {
 
 .token-panel {
   display: grid;
-  gap: 8px;
-  margin-top: 4px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
+  gap: 10px;
+  margin-top: 2px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--card);
 }
 
 .token-panel > label {
@@ -317,13 +325,14 @@ h1 {
   min-height: 40px;
   display: flex;
   align-items: center;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: var(--card);
+  border: 0;
+  border-radius: 9px;
+  background: var(--background);
 }
 
 .token-field:focus-within {
-  border-color: var(--ring);
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
 }
 
 .token-field input {
@@ -343,10 +352,11 @@ h1 {
 
 .token-visibility {
   align-self: stretch;
-  padding: 0 11px;
+  margin: 5px;
+  padding: 0 9px;
   border: 0;
-  border-left: 1px solid var(--border);
-  background: transparent;
+  border-radius: 7px;
+  background: var(--surface-hover);
   color: var(--text-soft);
   cursor: pointer;
   font-size: 10px;
@@ -375,13 +385,14 @@ h1 {
 }
 
 .connection-row {
-  min-height: 54px;
+  min-height: 58px;
   display: flex;
   align-items: center;
   gap: 9px;
-  margin-bottom: 17px;
-  padding: 7px 2px 14px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--card);
 }
 
 .status-dot {
@@ -431,30 +442,29 @@ h1 {
 }
 
 .section-label {
-  margin: 0 0 7px 2px;
+  margin: 0 0 8px 2px;
 }
 
 .settings-card {
-  margin-bottom: 17px;
-  overflow: hidden;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 2px;
+  margin-bottom: 20px;
+  padding: 4px;
+  border-radius: var(--radius);
+  background: var(--card);
 }
 
 .setting-row {
-  min-height: 59px;
+  min-height: 57px;
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-rows: 1fr;
   align-items: center;
   gap: 10px;
   position: relative;
-  padding: 10px 2px;
+  padding: 9px 10px;
+  border-radius: 9px;
   cursor: pointer;
-}
-
-.setting-row + .setting-row {
-  border-top: 1px solid var(--border);
 }
 
 .setting-row:hover {
@@ -547,12 +557,10 @@ h1 {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 10px 2px;
+  padding: 10px 12px;
   border: 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  background: transparent;
+  border-radius: var(--radius);
+  background: var(--card);
   color: var(--text-soft);
   cursor: pointer;
   text-align: left;
@@ -610,14 +618,15 @@ h1 {
   align-items: center;
   gap: 8px;
   padding: 0 10px;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
+  border: 0;
+  border-radius: 10px;
   background: var(--card);
   color: var(--text-faint);
 }
 
 .search:focus-within {
-  border-color: var(--ring);
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
 }
 
 .search svg {
@@ -641,28 +650,25 @@ h1 {
 
 .model-list {
   height: 322px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   overflow-y: auto;
   margin-top: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--card);
+  padding-right: 2px;
 }
 
 .model-item {
   width: 100%;
   min-height: 65px;
   display: block;
-  padding: 9px 11px;
+  padding: 10px 11px;
   border: 0;
-  border-bottom: 1px solid var(--border);
-  background: transparent;
+  border-radius: 10px;
+  background: var(--card);
   color: var(--text-strong);
   cursor: pointer;
   text-align: left;
-}
-
-.model-item:last-child {
-  border-bottom: 0;
 }
 
 .model-item:hover,
@@ -704,25 +710,6 @@ h1 {
   padding: 28px 16px;
   color: var(--text-faint);
   text-align: center;
-}
-
-footer {
-  min-height: 35px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-top: 1px solid var(--border);
-  color: var(--text-faint);
-  font-size: 9px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.footer-rule {
-  width: 18px;
-  height: 1px;
-  background: var(--border-strong);
 }
 
 @keyframes spin {

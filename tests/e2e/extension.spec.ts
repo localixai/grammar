@@ -340,8 +340,8 @@ test("runs OpenRouter SDK checks, caches decisions, preserves rich text, and ski
   await expect(root).toHaveAttribute("data-theme", "dark");
   await themePopup.close();
 
-  await root.getByRole("button", { name: "Review changes", exact: true }).click();
-  await root.getByRole("button", { name: "Reject change 1", exact: true }).click();
+  await root.getByRole("button", { name: "Accept all", exact: true }).click();
+  await expect(page.locator("#editor")).toHaveValue("This is a test sentence.");
   await expect(root.locator(".panel")).toBeHidden();
   await root.locator(".trigger").click();
   await expect(root.getByText("No clear issues found")).toBeVisible();
@@ -602,15 +602,12 @@ test("applies spelling and punctuation as one complete batch", async ({}, testIn
   await root.locator(".trigger").click();
 
   await expect(root.getByText("3 improvements", { exact: true })).toBeVisible();
-  await expect(
-    root.getByText("Hello, how are you? What are you doing?", { exact: true }),
-  ).toBeVisible();
+  await expect(root.locator(".corrected-preview")).toHaveText(
+    "Hello, how are you? What are you doing?",
+  );
+  await expect(root.locator(".correction")).toHaveCount(2);
   await expectNoSeriousAccessibilityViolations(page);
   await captureUi(page, testInfo, "grammar-overlay-batch");
-  await root.getByRole("button", { name: "Review changes", exact: true }).click();
-  await expect(root.locator(".diff-code")).toHaveCount(3);
-  await expectNoSeriousAccessibilityViolations(page);
-  await captureUi(page, testInfo, "grammar-overlay-review");
   const requestsAfterCheck = grammarRequestCount;
   await root.getByRole("button", { name: "Accept all", exact: true }).click();
   await expect(editor).toHaveValue("Hello, how are you? What are you doing?");
