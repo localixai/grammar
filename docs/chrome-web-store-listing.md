@@ -77,10 +77,16 @@ Required to complete OpenRouter's OAuth PKCE authorization through Chrome's mana
 
 ### Host access on all sites
 
-Required for the extension's single purpose: show the Localix control in supported web editors
-across HTTP(S) websites and frames. Chrome-internal and local file pages are not matched. Text is
-read only from the active eligible editor when a manual or automatic check runs. Sensitive and
-opt-out fields are excluded.
+The content script requires access for the extension's single purpose: show the Localix control in
+supported web editors across HTTP(S) websites and frames. Chrome-internal and local file pages are
+not matched. Text is read only from the active eligible editor when a manual or automatic check
+runs. Sensitive and opt-out fields are excluded.
+
+### openrouter.ai
+
+Required for the extension service worker to authenticate with OpenRouter, load the model catalog,
+and send user-requested grammar checks. Background network access is restricted to
+`https://openrouter.ai/*`.
 
 ## Data disclosure notes
 

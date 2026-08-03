@@ -7,11 +7,12 @@ selected through the user's OpenRouter account.
 
 ## Manifest permissions
 
-| Permission          | Why it is required                                                                                 | Data exposed                                        |
-| ------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `storage`           | Stores preferences and the OAuth-issued or manually supplied OpenRouter key                        | Extension-owned settings and credential             |
-| `identity`          | Runs OpenRouter PKCE through `chrome.identity.launchWebAuthFlow`                                   | OAuth callback code                                 |
-| HTTP(S) host access | Injects the writing UI into editors on user-visited HTTP(S) sites and sends requests to OpenRouter | Text in an eligible active editor when a check runs |
+| Permission                    | Why it is required                                                          | Data exposed                                         |
+| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `storage`                     | Stores preferences and the OAuth-issued or manually supplied OpenRouter key | Extension-owned settings and credential              |
+| `identity`                    | Runs OpenRouter PKCE through `chrome.identity.launchWebAuthFlow`            | OAuth callback code                                  |
+| `https://openrouter.ai/*`     | Lets the service worker call the selected OpenRouter model                  | Text submitted for a check and OpenRouter credential |
+| HTTP(S) content-script access | Shows the writing UI in supported editors across websites and frames        | Text in an eligible active editor when a check runs  |
 
 The extension does **not** request `tabs`, browsing history, cookies, clipboard, downloads,
 notifications, geolocation, or background page access.
@@ -20,11 +21,12 @@ The extension-page Content Security Policy allows scripts, styles, fonts, and im
 packaged extension and narrows outbound `connect-src` to `https://openrouter.ai`. The build
 validator rejects a broader policy.
 
-Host access is broad because the product works in editors across websites and frames. Runtime field
-policy narrows actual processing to supported prose editors and excludes sensitive, read-only, and
-opted-out controls. Focusing alone does not submit text: automatic checks require a trusted user
-input event, and script-generated input or trigger clicks are ignored. Chrome-internal pages,
-extension pages, and local `file://` documents are not matched.
+Content-script access is broad because the product works in editors across websites and frames.
+Background network host access is separately restricted to `https://openrouter.ai/*`. Runtime
+field policy narrows actual processing to supported prose editors and excludes sensitive,
+read-only, and opted-out controls. Focusing alone does not submit text: automatic checks require a
+trusted user input event, and script-generated input or trigger clicks are ignored. Chrome-internal
+pages, extension pages, and local `file://` documents are not matched.
 
 ## Data-flow boundaries
 
@@ -66,9 +68,12 @@ Grammar results and submitted writing are kept only in bounded, in-memory caches
 script and extension service worker. Entries expire after five minutes; all entries are transient,
 are cleared on disconnect, and are never written to Chrome storage.
 
-The hostname is not accepted from page or frame message data. The service worker derives the
-top-level tab hostname from Chrome's trusted message metadata, so one per-site choice applies to
-same-origin and cross-origin editor frames alike.
+For grammar checks, the hostname is not accepted from page or frame message data. The service
+worker derives the top-level tab hostname from Chrome's trusted sender metadata, so one per-site
+choice applies to same-origin and cross-origin editor frames alike. To label the popup's current-site
+switch without `tabs` or broad network host permission, the popup asks the packaged isolated
+content script in frame zero for its hostname. Webpage scripts cannot receive or answer that
+extension-internal message.
 
 ## Network behavior
 

@@ -5,7 +5,7 @@
   "description": "Precise AI grammar, spelling, punctuation, and style checks in supported web editors.",
   "minimum_chrome_version": "116",
   "permissions": ["storage", "identity"],
-  "host_permissions": ["http://*/*", "https://*/*"],
+  "host_permissions": ["https://openrouter.ai/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"

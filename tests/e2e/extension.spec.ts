@@ -400,12 +400,7 @@ test("runs OpenRouter SDK checks, caches decisions, preserves rich text, and ski
       }),
   );
   expect(concurrentPreferences).toMatchObject({ checkDelayMs: 700, theme: "light" });
-  await popup.evaluate(async () => {
-    const tabs = await chrome.tabs.query({});
-    const fixtureTab = tabs.find((tab) => tab.url?.includes("127.0.0.1:4179/editor.html"));
-    if (fixtureTab?.id === undefined) throw new Error("Editor fixture tab was not found");
-    await chrome.tabs.update(fixtureTab.id, { active: true });
-  });
+  await page.bringToFront();
   await popup.reload();
   await expect(popup.locator("#siteSetting")).toBeVisible();
   await expect(popup.locator("#siteTitle")).toHaveText("127.0.0.1");
@@ -436,12 +431,7 @@ test("runs OpenRouter SDK checks, caches decisions, preserves rich text, and ski
   await popup.locator("#modelSearch").fill("openai/gpt-5.4-mini");
   await popup.locator(".model-item", { hasText: "openai/gpt-5.4-mini" }).click();
   await popup.locator("#autoCheckToggle").check();
-  await popup.evaluate(async () => {
-    const tabs = await chrome.tabs.query({});
-    const fixtureTab = tabs.find((tab) => tab.url?.includes("127.0.0.1:4179/editor.html"));
-    if (fixtureTab?.id === undefined) throw new Error("Editor fixture tab was not found");
-    await chrome.tabs.update(fixtureTab.id, { active: true });
-  });
+  await page.bringToFront();
 
   await page.locator("#rich").fill("This are automatic text.");
   await expect(root.getByText("1 improvement", { exact: true })).toBeVisible({

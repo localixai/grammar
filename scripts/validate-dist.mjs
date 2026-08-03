@@ -49,8 +49,15 @@ invariant(manifest.permissions.includes("identity"), "identity permission is req
 invariant(!manifest.permissions.includes("tabs"), "tabs permission is intentionally not allowed");
 invariant(
   JSON.stringify([...manifest.host_permissions].sort()) ===
-    JSON.stringify(["http://*/*", "https://*/*"]),
-  "host access must be limited to HTTP(S) pages",
+    JSON.stringify(["https://openrouter.ai/*"]),
+  "host access must be limited to OpenRouter",
+);
+invariant(
+  manifest.content_scripts?.every(
+    (script) =>
+      JSON.stringify([...script.matches].sort()) === JSON.stringify(["http://*/*", "https://*/*"]),
+  ),
+  "content scripts must remain limited to HTTP(S) editor pages",
 );
 invariant(
   manifest.content_scripts?.every((script) => script.all_frames === true),

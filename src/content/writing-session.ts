@@ -239,7 +239,25 @@ export class WritingSession {
 
   private readonly onViewportChange = (): void => this.schedulePosition();
 
-  private readonly onRuntimeMessage = (message: unknown): void => {
+  private readonly onRuntimeMessage = (
+    message: unknown,
+    _sender: chrome.runtime.MessageSender,
+    sendResponse: (response?: unknown) => void,
+  ): boolean | void => {
+    if (
+      message &&
+      typeof message === "object" &&
+      "type" in message &&
+      message.type === "GET_LOCALIX_SITE_CONTEXT"
+    ) {
+      sendResponse({
+        hostname:
+          window.location.protocol === "http:" || window.location.protocol === "https:"
+            ? window.location.hostname.toLowerCase()
+            : null,
+      });
+      return false;
+    }
     if (
       message &&
       typeof message === "object" &&

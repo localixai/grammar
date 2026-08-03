@@ -65,12 +65,21 @@ async function activeHostname(): Promise<string | null> {
   } catch {
     return null;
   }
-  const url = tabs[0]?.url;
-  if (!url) return null;
+  const tabId = tabs[0]?.id;
+  if (tabId === undefined) return null;
   try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:"
-      ? parsed.hostname.toLowerCase()
+    const response: unknown = await chrome.tabs.sendMessage(
+      tabId,
+      { type: "GET_LOCALIX_SITE_CONTEXT" },
+      { frameId: 0 },
+    );
+    const hostname =
+      response && typeof response === "object" && "hostname" in response ? response.hostname : null;
+    return typeof hostname === "string" &&
+      hostname.length > 0 &&
+      hostname.length <= 253 &&
+      !/[\s/?#@]/u.test(hostname)
+      ? hostname.toLowerCase()
       : null;
   } catch {
     return null;
