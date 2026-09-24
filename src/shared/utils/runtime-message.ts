@@ -1,8 +1,15 @@
 import type { Message, MessageResponse } from "../types";
 
 export interface RuntimeMessageTransport {
-  send(message: Message, callback: (response: MessageResponse | undefined) => void): void;
+  send(
+    message: Message,
+    callback: (response: MessageResponse | undefined) => void,
+  ): void | Promise<unknown>;
   lastError(): string | undefined;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function chromeTransport(): RuntimeMessageTransport {
@@ -34,14 +41,27 @@ export function sendRuntimeMessage(
       finish({ success: false, error: timeoutError });
     }, timeoutMs);
 
-    transport.send(message, (response) => {
-      const runtimeError = transport.lastError();
-      if (settled) return;
-      if (runtimeError) {
-        finish({ success: false, error: runtimeError });
-      } else {
-        finish(response ?? { success: false, error: "No response from Localix Grammar." });
+    try {
+      const pending = transport.send(message, (response) => {
+        try {
+          const runtimeError = transport.lastError();
+          if (settled) return;
+          if (runtimeError) {
+            finish({ success: false, error: runtimeError });
+          } else {
+            finish(response ?? { success: false, error: "No response from Localix Grammar." });
+          }
+        } catch (error) {
+          finish({ success: false, error: errorMessage(error) });
+        }
+      });
+      if (pending && typeof pending.then === "function") {
+        void pending.then(undefined, (error: unknown) => {
+          finish({ success: false, error: errorMessage(error) });
+        });
       }
-    });
+    } catch (error) {
+      finish({ success: false, error: errorMessage(error) });
+    }
   });
 }

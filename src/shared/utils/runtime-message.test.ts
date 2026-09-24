@@ -47,6 +47,42 @@ describe("bounded runtime messages", () => {
     });
   });
 
+  test("resolves when a reloaded extension makes sendMessage throw", async () => {
+    const runtime: RuntimeMessageTransport = {
+      send(): void {
+        throw new Error("Extension context invalidated.");
+      },
+      lastError: () => undefined,
+    };
+    await expect(
+      sendRuntimeMessage({ type: "GET_SETTINGS" }, 1_000, "Timed out", runtime),
+    ).resolves.toEqual({ success: false, error: "Extension context invalidated." });
+  });
+
+  test("handles a rejected browser message promise", async () => {
+    const runtime: RuntimeMessageTransport = {
+      send: () => Promise.reject(new Error("Extension context invalidated.")),
+      lastError: () => undefined,
+    };
+    await expect(
+      sendRuntimeMessage({ type: "GET_SETTINGS" }, 1_000, "Timed out", runtime),
+    ).resolves.toEqual({ success: false, error: "Extension context invalidated." });
+  });
+
+  test("handles a callback that cannot read lastError after reload", async () => {
+    const runtime: RuntimeMessageTransport = {
+      send(_message, callback): void {
+        callback(undefined);
+      },
+      lastError(): string {
+        throw new Error("Extension context invalidated.");
+      },
+    };
+    await expect(
+      sendRuntimeMessage({ type: "GET_SETTINGS" }, 1_000, "Timed out", runtime),
+    ).resolves.toEqual({ success: false, error: "Extension context invalidated." });
+  });
+
   test("resolves at the deadline and ignores a late callback", async () => {
     vi.useFakeTimers();
     const runtime = transport();
