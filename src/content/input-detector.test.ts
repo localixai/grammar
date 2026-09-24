@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 
 import {
   isEligibleElement,
+  hasWritingSpace,
   isSupportedElement,
   languageForElement,
   resolveEditableTarget,
@@ -14,6 +15,32 @@ beforeEach(() => {
 });
 
 describe("editable field detection", () => {
+  test("hides the trigger for compact fields and spreadsheet cells", () => {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.getBoundingClientRect = (): DOMRect => ({ width: 110, height: 32 }) as DOMRect;
+    expect(hasWritingSpace(input)).toBe(false);
+    input.getBoundingClientRect = (): DOMRect => ({ width: 240, height: 32 }) as DOMRect;
+    expect(hasWritingSpace(input)).toBe(true);
+
+    const cell = document.createElement("td");
+    const editor = document.createElement("div");
+    editor.contentEditable = "true";
+    cell.appendChild(editor);
+    document.body.appendChild(document.createElement("table")).appendChild(cell);
+    editor.getBoundingClientRect = (): DOMRect => ({ width: 190, height: 34 }) as DOMRect;
+    expect(hasWritingSpace(editor)).toBe(false);
+
+    const surface = document.createElement("div");
+    const richEditor = document.createElement("div");
+    richEditor.contentEditable = "true";
+    richEditor.setAttribute("role", "textbox");
+    richEditor.textContent = "A sentence in a large writing surface.";
+    surface.appendChild(richEditor);
+    surface.getBoundingClientRect = (): DOMRect => ({ width: 500, height: 180 }) as DOMRect;
+    richEditor.getBoundingClientRect = (): DOMRect => ({ width: 24, height: 24 }) as DOMRect;
+    expect(hasWritingSpace(richEditor)).toBe(true);
+  });
   test("supports prose controls and rejects non-prose inputs", () => {
     const text = document.createElement("input");
     text.type = "text";

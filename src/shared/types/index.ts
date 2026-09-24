@@ -30,6 +30,7 @@ export interface CheckRequest {
 export interface ModelInfo {
   readonly id: string;
   readonly name: string;
+  readonly createdAt?: number;
   readonly contextWindow?: number;
   readonly inputCostPerMillion?: number;
   readonly outputCostPerMillion?: number;

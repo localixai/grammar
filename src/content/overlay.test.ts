@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { CheckResult, GrammarError } from "../shared/types";
-import { GrammarOverlay } from "./overlay";
+import { GrammarOverlay, requiresManualPaste } from "./overlay";
 
 function issue(): GrammarError {
   return {
@@ -45,6 +45,15 @@ beforeEach(() => {
 });
 
 describe("GrammarOverlay accessibility", () => {
+  test("offers copy instead of apply for Teams contenteditable editors", () => {
+    const editor = document.createElement("div");
+    editor.contentEditable = "true";
+    const textarea = document.createElement("textarea");
+    expect(requiresManualPaste("teams.cloud.microsoft", editor)).toBe(true);
+    expect(requiresManualPaste("teams.microsoft.com", editor)).toBe(true);
+    expect(requiresManualPaste("teams.cloud.microsoft", textarea)).toBe(false);
+    expect(requiresManualPaste("example.com", editor)).toBe(false);
+  });
   test("routes suggestion actions through the product callbacks", () => {
     const callbacks = {
       onCheck: vi.fn(),
@@ -69,7 +78,7 @@ describe("GrammarOverlay accessibility", () => {
     expect(callbacks.onClose).toHaveBeenCalledOnce();
   });
 
-  test("shows one corrected preview with highlighted replacements", () => {
+  test("shows one clean corrected preview", () => {
     const overlay = new GrammarOverlay({
       onCheck: vi.fn(),
       onApply: vi.fn(),
@@ -83,9 +92,6 @@ describe("GrammarOverlay accessibility", () => {
     overlay.showResult(result([issue(), secondIssue()]));
     expect(shadow.querySelector(".summary-count")?.textContent).toBe("2 improvements");
     expect(shadow.querySelector(".corrected-preview")?.textContent).toBe("This is a example.");
-    expect(
-      [...shadow.querySelectorAll(".correction")].map((element) => element.textContent),
-    ).toEqual(["is", "example"]);
     expect(shadow.querySelector(".apply-all")?.textContent).toBe("Apply all");
     expect(shadow.querySelector(".apply-all")?.getAttribute("aria-label")).toBe("Accept all");
     expect(shadow.querySelector(".suggestion-card")).toBeNull();
@@ -97,6 +103,37 @@ describe("GrammarOverlay accessibility", () => {
     });
     expect(shadow.querySelector(".summary-count")?.textContent).toBe("1 improvement");
     expect(shadow.querySelector(".corrected-preview")?.textContent).toBe("This is a example.");
+  });
+
+  test("copies corrected text from results and from an apply error", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    try {
+      const overlay = new GrammarOverlay({
+        onCheck: vi.fn(),
+        onApply: vi.fn(),
+        onApplyAll: vi.fn(),
+        onRejectAll: vi.fn(),
+        onIgnore: vi.fn(),
+        onClose: vi.fn(),
+      });
+      const shadow = overlay.host.shadowRoot!;
+      overlay.showResult(result([issue()]));
+      shadow.querySelector<HTMLButtonElement>(".copy-text")!.click();
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith("This is a test."));
+
+      overlay.showError("Apply failed", "This is a test.");
+      shadow.querySelector<HTMLButtonElement>(".copy-text")!.click();
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+      overlay.destroy();
+    } finally {
+      if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
   });
 
   test("ignores script-generated trigger activation", () => {

@@ -10,7 +10,7 @@ The public repositories below were inspected at the recorded revisions.
 
 | Source                                                                        | Revision reviewed | Relevant evidence                                                                                                                   |
 | ----------------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| [OpenRouter TypeScript SDK](https://github.com/OpenRouterTeam/typescript-sdk) | npm `1.2.2`       | Official typed chat, model-catalog and OAuth operations, response validation, retries, timeout, and abort signals                   |
+| [OpenRouter TypeScript SDK](https://github.com/OpenRouterTeam/typescript-sdk) | npm `1.3.21`      | Official typed chat, model-catalog and OAuth operations, response validation, retries, timeout, and abort signals                   |
 | [pi](https://github.com/earendil-works/pi)                                    | `3cd39163cbaa`    | Evaluated agent/runtime abstraction and browser model support; rejected for this product's single constrained inference             |
 | [Harper](https://github.com/Automattic/harper)                                | `cf9ed268391d`    | Browser-extension E2E, iframe handling, one-lint suggestion popover, `beforeinput`, DOM `Range` replacement, selection preservation |
 | [Correctly](https://github.com/iamaamir/Correctly)                            | `922e3f89b8dd`    | Sensitive-field exclusions, debouncing, unchanged-text suppression, stale-generation rejection, dismissible UI                      |

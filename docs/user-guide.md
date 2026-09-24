@@ -73,6 +73,10 @@ Changing the model invalidates active results and separates cached decisions by 
 - standard `contenteditable` editors, including formatting split across multiple text nodes
 - editors inside same-origin or cross-origin frames where the extension content script is allowed
 
+You can also select text on a page, right-click, and choose **Correct selected text with Localix
+Grammar**. The selection opens in the popup checker and is corrected there. Use **Copy text** to
+paste it back into editors that do not accept automatic changes.
+
 Rich-text corrections preserve surrounding elements such as links, emphasis, and paragraphs.
 One check accepts up to 20,000 JavaScript UTF-16 characters. Longer editors are rejected with an
 explicit error rather than silently truncated.

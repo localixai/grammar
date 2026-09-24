@@ -10,6 +10,7 @@ const MAX_CATALOG_MODELS = 1_000;
 export interface CatalogModel {
   readonly id: string;
   readonly name: string;
+  readonly created?: number;
   readonly contextLength: number | null;
   readonly pricing: {
     readonly prompt: string;
@@ -51,6 +52,11 @@ export function normalizeModelCatalog(catalog: readonly CatalogModel[]): ModelIn
     normalized.push({
       id,
       name,
+      ...(typeof model.created === "number" &&
+      Number.isSafeInteger(model.created) &&
+      model.created > 0
+        ? { createdAt: model.created }
+        : {}),
       ...(typeof model.contextLength === "number" &&
       Number.isFinite(model.contextLength) &&
       model.contextLength > 0

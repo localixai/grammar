@@ -28,6 +28,10 @@
         ></button>
       </header>
       <p id="popupAlert" class="popup-alert hidden" role="alert"></p>
+      <nav id="popupNav" class="popup-nav hidden" aria-label="Popup sections">
+        <button id="checkTab" type="button" aria-current="page">Check</button>
+        <button id="settingsTab" type="button">Settings</button>
+      </nav>
 
       <section id="loadingView" class="view status-view" aria-live="polite">
         <span class="spinner" aria-hidden="true"></span>
@@ -84,6 +88,36 @@
           </form>
         </div>
         <p id="connectError" class="error hidden" role="alert"></p>
+      </section>
+
+      <section id="checkView" class="view hidden">
+        <section class="quick-check" aria-labelledby="quickCheckTitle">
+          <div class="quick-check-heading">
+            <h2 id="quickCheckTitle">Check text</h2>
+            <span id="quickCheckCount">0 / 20,000</span>
+          </div>
+          <form id="quickCheckForm">
+            <label class="sr-only" for="quickCheckInput">Text to check</label>
+            <textarea
+              id="quickCheckInput"
+              placeholder="Write or paste text here…"
+              maxlength="20000"
+              spellcheck="true"
+            ></textarea>
+            <button id="quickCheckButton" class="button primary" type="submit">Check</button>
+          </form>
+          <div class="quick-check-footer">
+            <p
+              id="quickCheckStatus"
+              class="quick-check-status"
+              role="status"
+              aria-live="polite"
+            ></p>
+            <button id="quickCheckCopy" class="quick-check-copy" type="button" disabled>
+              Copy text
+            </button>
+          </div>
+        </section>
       </section>
 
       <section id="settingsView" class="view hidden">
@@ -161,6 +195,14 @@
             autocomplete="off"
           />
         </label>
+        <div class="model-sort-row">
+          <label for="modelSort">Sort models</label>
+          <select id="modelSort">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name">Name A–Z</option>
+          </select>
+        </div>
         <div id="modelList" class="model-list" role="region" aria-label="Available models"></div>
       </section>
     </main>

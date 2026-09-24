@@ -1,4 +1,4 @@
-import { isContentEditable, type SupportedElement } from "./input-detector";
+import { isContentEditable, isFramedEditableBody, type SupportedElement } from "./input-detector";
 
 const CLIPPING_OVERFLOW = new Set(["auto", "clip", "hidden", "scroll"]);
 const INLINE_DISPLAYS = new Set(["inline", "inline-block", "inline-flex", "inline-grid"]);
@@ -98,6 +98,7 @@ function clipsOwnContent(element: HTMLElement): boolean {
  */
 export function resolveEditorAnchor(element: SupportedElement): HTMLElement {
   if (!isContentEditable(element)) return element;
+  if (isFramedEditableBody(element)) return document.documentElement;
   const directRect = element.getBoundingClientRect();
   if (renderedRect(directRect) && (usesInlineLayout(element) || clipsOwnContent(element))) {
     return element;
@@ -150,10 +151,40 @@ function overflowClips(value: string): boolean {
   return CLIPPING_OVERFLOW.has(value.trim().toLowerCase());
 }
 
+function hasHiddenSurface(element: Element): boolean {
+  let current: Element | null = element;
+  while (current) {
+    const style = getComputedStyle(current);
+    if (
+      style.display === "none" ||
+      style.visibility === "hidden" ||
+      style.visibility === "collapse"
+    ) {
+      return true;
+    }
+    current = composedParent(current);
+  }
+  return false;
+}
+
+function isFrameVisible(): boolean {
+  try {
+    const frame = window.frameElement;
+    return !frame || !hasHiddenSurface(frame);
+  } catch {
+    return true;
+  }
+}
+
 /**
  * Returns the on-screen portion of the visual editor surface after viewport and overflow clipping.
  */
 export function visibleEditorRect(element: SupportedElement): DOMRect | null {
+  if (hasHiddenSurface(element) || !isFrameVisible()) return null;
+  if (isFramedEditableBody(element)) {
+    const viewport = viewportRect();
+    return new DOMRect(viewport.left, viewport.top, viewport.width, viewport.height);
+  }
   const anchor = resolveEditorAnchor(element);
   const anchorRect = anchor.getBoundingClientRect();
   if (!finiteRect(anchorRect)) return null;

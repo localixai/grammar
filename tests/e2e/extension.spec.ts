@@ -87,12 +87,14 @@ test.beforeAll(async () => {
       contentType: "application/json",
       body: JSON.stringify({
         data: {
+          allowed_data_regions: [],
           byok_usage: 0,
           byok_usage_daily: 0,
           byok_usage_monthly: 0,
           byok_usage_weekly: 0,
           creator_user_id: "e2e-user",
           expires_at: null,
+          free_model_daily_requests: { limit: 0, remaining: 0, used: 0 },
           include_byok_in_limit: false,
           is_free_tier: false,
           is_management_key: false,
@@ -101,11 +103,13 @@ test.beforeAll(async () => {
           limit: null,
           limit_remaining: null,
           limit_reset: null,
+          organization_id: null,
           rate_limit: { interval: "10s", note: "", requests: -1 },
           usage: 0,
           usage_daily: 0,
           usage_monthly: 0,
           usage_weekly: 0,
+          workspace_id: null,
         },
       }),
     });
@@ -118,7 +122,12 @@ test.beforeAll(async () => {
       id,
       canonical_slug: id,
       name,
-      created: 0,
+      created:
+        id === "deepseek/deepseek-v4-flash-0731"
+          ? 1_780_000_000
+          : id === "openai/gpt-5.4"
+            ? 1_760_000_000
+            : 1_770_000_000,
       description: "E2E model fixture",
       context_length: 400_000,
       architecture: {
@@ -256,6 +265,17 @@ test("runs OpenRouter SDK checks, caches decisions, preserves rich text, and ski
   await expect(root.locator(".trigger")).toBeVisible();
   await expect(root.locator(".trigger")).toHaveCSS("width", "24px");
   await expect(root.locator(".trigger")).toHaveCSS("height", "24px");
+  await page.evaluate(() => {
+    const compact = document.createElement("input");
+    compact.id = "compact-cell";
+    compact.setAttribute("aria-label", "Compact cell value");
+    compact.style.width = "90px";
+    document.body.appendChild(compact);
+  });
+  await page.locator("#compact-cell").focus();
+  await expect(root.locator(".trigger")).toBeHidden();
+  await page.locator("#editor").focus();
+  await expect(root.locator(".trigger")).toBeVisible();
 
   await page.evaluate(() => {
     document
@@ -402,6 +422,7 @@ test("runs OpenRouter SDK checks, caches decisions, preserves rich text, and ski
   expect(concurrentPreferences).toMatchObject({ checkDelayMs: 700, theme: "light" });
   await page.bringToFront();
   await popup.reload();
+  await popup.locator("#settingsTab").click();
   await expect(popup.locator("#siteSetting")).toBeVisible();
   await expect(popup.locator("#siteTitle")).toHaveText("127.0.0.1");
   await expectNoSeriousAccessibilityViolations(popup);
@@ -410,7 +431,9 @@ test("runs OpenRouter SDK checks, caches decisions, preserves rich text, and ski
   await expect(root.locator(".trigger")).toBeHidden();
   await expect(frameRoot.locator(".trigger")).toBeHidden();
   await popup.locator("#siteToggle").check();
+  await page.locator("#rich").focus();
   await expect(root.locator(".trigger")).toBeVisible();
+  await frame.locator("#frame-editor").focus();
   await expect(frameRoot.locator(".trigger")).toBeVisible();
 
   await popup.locator("#enabledToggle").uncheck();
@@ -547,11 +570,35 @@ test("runs OpenRouter SDK checks, caches decisions, preserves rich text, and ski
 test("renders the connected popup with the OpenRouter model catalog", async ({}, testInfo) => {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
-  await expect(page.getByText("OpenRouter connected")).toBeVisible();
-  await expect(page.getByText("Direct connection")).toBeVisible();
+  await expect(page.locator("#checkTab")).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#settingsView")).toBeHidden();
   await expect(page.locator("#modelId")).toHaveText("openai/gpt-5.4-mini");
+  await expect(page.locator("#quickCheckButton")).toBeDisabled();
+  await page.locator("#quickCheckInput").fill("This are popup text.");
+  const editorBefore = await page.locator("#quickCheckInput").boundingBox();
+  const buttonBefore = await page.locator("#quickCheckButton").boundingBox();
+  await expect(page.locator("#quickCheckButton")).toHaveText("Check");
+  await page.locator("#quickCheckButton").hover();
+  await expect(page.locator("#quickCheckButton")).toHaveText("Check");
+  await page.locator("#quickCheckButton").click();
+  await expect(page.locator("#quickCheckStatus")).toHaveText("1 correction applied");
+  await expect(page.locator("#quickCheckInput")).toHaveValue("This is popup text.");
+  await expect(page.locator("#quickCheckButton")).toBeVisible();
+  await expect(page.locator("#quickCheckButton")).toBeEnabled();
+  expect(await page.locator("#quickCheckInput").boundingBox()).toEqual(editorBefore);
+  expect(await page.locator("#quickCheckButton").boundingBox()).toEqual(buttonBefore);
+  await captureUi(page, testInfo, "grammar-popup-suggestions");
+  await page.locator("#quickCheckButton").click();
+  await expect(page.locator("#quickCheckStatus")).toHaveText("No corrections needed");
+  await expect(page.locator("#quickCheckInput")).toHaveValue("This is popup text.");
+  expect(await page.locator("#quickCheckInput").boundingBox()).toEqual(editorBefore);
+  expect(await page.locator("#quickCheckButton").boundingBox()).toEqual(buttonBefore);
   await expectNoSeriousAccessibilityViolations(page);
   await captureUi(page, testInfo, "grammar-popup");
+
+  await page.locator("#settingsTab").click();
+  await expect(page.getByText("OpenRouter connected")).toBeVisible();
+  await expect(page.getByText("Direct connection")).toBeVisible();
 
   await page.locator("#themeButton").click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -561,6 +608,11 @@ test("renders the connected popup with the OpenRouter model catalog", async ({},
   await page.locator("#modelButton").click();
   await expect(page.getByRole("region", { name: "Available models" })).toBeVisible();
   await expect(page.locator("#modelSearch")).toBeFocused();
+  await expect(page.locator("#modelSort")).toHaveValue("newest");
+  await expect(page.locator(".model-item").first()).toContainText("DeepSeek V4 Flash");
+  await page.locator("#modelSort").selectOption("oldest");
+  await expect(page.locator(".model-item").first()).toContainText("OpenAI: GPT-5.4");
+  await page.locator("#modelSort").selectOption("newest");
   await expect(page.locator(".model-item").first().locator(".model-cost")).toContainText("/ 1M");
   await expectNoSeriousAccessibilityViolations(page);
   await captureUi(page, testInfo, "grammar-popup-models");
@@ -582,6 +634,83 @@ test("renders the connected popup with the OpenRouter model catalog", async ({},
   await page.close();
 });
 
+test("detects and positions the trigger in a TinyMCE-style related frame", async ({}, testInfo) => {
+  const page = await context.newPage();
+  await page.goto("/editor.html");
+  const frame = page.frameLocator("#tinymce-frame");
+  const editor = frame.locator("body[contenteditable='true']");
+  const bodyBox = await editor.boundingBox();
+  expect(bodyBox?.height).toBeLessThan(24);
+  await editor.focus();
+  const trigger = frame.locator("localix-grammar-root .trigger");
+  await expect(trigger).toBeVisible();
+  const editorBox = await page.locator("#tinymce-frame").boundingBox();
+  const triggerBox = await trigger.boundingBox();
+  expect(editorBox).not.toBeNull();
+  expect(triggerBox).not.toBeNull();
+  expect(triggerBox!.x).toBeGreaterThanOrEqual(editorBox!.x);
+  expect(triggerBox!.y).toBeGreaterThanOrEqual(editorBox!.y);
+  expect(triggerBox!.x + triggerBox!.width).toBeLessThanOrEqual(editorBox!.x + editorBox!.width);
+  expect(triggerBox!.y + triggerBox!.height).toBeLessThanOrEqual(editorBox!.y + editorBox!.height);
+  await trigger.click();
+  const portal = page.locator("localix-grammar-panel-root");
+  await expect(portal.getByText("1 improvement", { exact: true })).toBeVisible();
+  const applyButton = portal.getByRole("button", { name: "Accept all", exact: true });
+  const copyButton = portal.getByRole("button", { name: "Copy corrected text", exact: true });
+  const applyBox = await applyButton.boundingBox();
+  const copyBox = await copyButton.boundingBox();
+  const panelBox = await portal.locator(".panel").boundingBox();
+  expect(applyBox).not.toBeNull();
+  expect(copyBox).not.toBeNull();
+  expect(panelBox).not.toBeNull();
+  expect(panelBox!.height).toBeGreaterThan(editorBox!.height);
+  expect(Math.abs(applyBox!.height - copyBox!.height)).toBeLessThan(1);
+  expect(Math.abs(applyBox!.width - copyBox!.width)).toBeLessThan(2);
+  expect(applyBox!.y + applyBox!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+  if (process.env["LOCALIX_CAPTURE_UI"] === "1") {
+    const path = testInfo.outputPath("grammar-jira-panel.png");
+    await portal.locator(".panel").screenshot({ path });
+    await testInfo.attach("grammar-jira-panel", { path, contentType: "image/png" });
+  }
+  await applyButton.click();
+  await expect(editor).toHaveText("This is framed text.");
+  await expect(trigger).toBeVisible();
+  await page.close();
+});
+
+test("checks selected text from the browser context menu in the existing popup", async () => {
+  const worker = context.serviceWorkers()[0];
+  if (!worker) throw new Error("Extension service worker is unavailable");
+  await worker.evaluate(async () => {
+    await chrome.storage.session.set({
+      pendingSelection: {
+        id: crypto.randomUUID(),
+        text: "This are selected text.",
+        createdAt: Date.now(),
+        truncated: false,
+      },
+    });
+  });
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
+  await expect(popup.locator("#quickCheckInput")).toHaveValue("This is selected text.");
+  await expect(popup.locator("#quickCheckStatus")).toHaveText("1 correction applied");
+  await expect(popup.locator("#quickCheckButton")).toBeEnabled();
+  expect(await worker.evaluate(() => chrome.storage.session.get("pendingSelection"))).toEqual({});
+  await worker.evaluate(async () => {
+    await chrome.storage.session.set({
+      pendingSelection: {
+        id: crypto.randomUUID(),
+        text: "This are later text.",
+        createdAt: Date.now(),
+        truncated: false,
+      },
+    });
+  });
+  await expect(popup.locator("#quickCheckInput")).toHaveValue("This is later text.");
+  await popup.close();
+});
+
 test("applies spelling and punctuation as one complete batch", async ({}, testInfo) => {
   const page = await context.newPage();
   await page.goto("/editor.html");
@@ -595,7 +724,7 @@ test("applies spelling and punctuation as one complete batch", async ({}, testIn
   await expect(root.locator(".corrected-preview")).toHaveText(
     "Hello, how are you? What are you doing?",
   );
-  await expect(root.locator(".correction")).toHaveCount(2);
+  await expect(root.locator(".corrected-preview")).toHaveCount(1);
   await expectNoSeriousAccessibilityViolations(page);
   await captureUi(page, testInfo, "grammar-overlay-batch");
   const requestsAfterCheck = grammarRequestCount;
@@ -606,6 +735,40 @@ test("applies spelling and punctuation as one complete batch", async ({}, testIn
   await root.locator(".trigger").click();
   await expect(root.getByText("No clear issues found")).toBeVisible();
   expect(grammarRequestCount).toBe(requestsAfterCheck);
+  await page.close();
+});
+
+test("applies several changes to a plain contenteditable editor in one edit", async () => {
+  const page = await context.newPage();
+  await page.goto("/editor.html");
+  const editor = page.locator("#rich");
+  await editor.fill("helo how are you what are you doing ?");
+  await editor.focus();
+  const root = page.locator("localix-grammar-root");
+  await root.locator(".trigger").click();
+  await expect(root.getByText("3 improvements", { exact: true })).toBeVisible();
+  await root.getByRole("button", { name: "Accept all", exact: true }).click();
+  await expect(editor).toHaveText("Hello, how are you? What are you doing?");
+  await expect(root.locator(".panel")).toBeHidden();
+  await page.close();
+});
+
+test("keeps corrected text available when protected editor content blocks applying", async ({}, testInfo) => {
+  const page = await context.newPage();
+  await page.goto("/editor.html");
+  const editor = page.locator("#rich");
+  await editor.evaluate((element) => {
+    element.innerHTML = 'This <span contenteditable="false">are</span> text.';
+  });
+  await editor.focus();
+  const root = page.locator("localix-grammar-root");
+  await root.locator(".trigger").click();
+  await expect(root.getByText("1 improvement", { exact: true })).toBeVisible();
+  await root.getByRole("button", { name: "Accept all", exact: true }).click();
+  await expect(root.getByText("Could not apply changes")).toBeVisible();
+  await expect(root.getByRole("button", { name: "Copy corrected text" })).toBeVisible();
+  await captureUi(page, testInfo, "grammar-overlay-apply-error");
+  await expect(editor.locator('[contenteditable="false"]')).toHaveText("are");
   await page.close();
 });
 
@@ -760,6 +923,7 @@ test("disconnects and reconnects with a manually supplied API key", async ({}, t
 
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
+  await page.locator("#settingsTab").click();
   await expect(page.getByText("OpenRouter connected")).toBeVisible();
   await page.getByRole("button", { name: "Disconnect" }).click();
   await expect(page.getByRole("heading", { name: "Your model. Your writing." })).toBeVisible();
@@ -787,6 +951,7 @@ test("disconnects and reconnects with a manually supplied API key", async ({}, t
   await page.getByRole("button", { name: "Hide API key" }).click();
   await apiKeyInput.fill("sk-or-v1-e2e-manual-key");
   await page.getByRole("button", { name: "Connect with API key" }).click();
+  await page.locator("#settingsTab").click();
   await expect(page.getByText("OpenRouter connected")).toBeVisible();
   expect(lastKeyAuthorization).toBe("Bearer sk-or-v1-e2e-manual-key");
   expect(lastKeyHeaders["http-referer"]).toBe("https://localix.ai");

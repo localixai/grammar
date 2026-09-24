@@ -41,11 +41,12 @@ invariant(
   "extension CSP must allow network connections only to OpenRouter",
 );
 invariant(
-  Number.parseInt(manifest.minimum_chrome_version, 10) >= 116,
+  Number.parseInt(manifest.minimum_chrome_version, 10) >= 127,
   "minimum Chrome version must support the extension runtime",
 );
 invariant(manifest.permissions.includes("storage"), "storage permission is required");
 invariant(manifest.permissions.includes("identity"), "identity permission is required");
+invariant(manifest.permissions.includes("contextMenus"), "context menu permission is required");
 invariant(!manifest.permissions.includes("tabs"), "tabs permission is intentionally not allowed");
 invariant(
   JSON.stringify([...manifest.host_permissions].sort()) ===
@@ -64,7 +65,7 @@ invariant(
   "all content scripts must explicitly support frames",
 );
 invariant(
-  packageJson.dependencies?.["@openrouter/sdk"] === "1.2.2",
+  packageJson.dependencies?.["@openrouter/sdk"] === "1.3.21",
   "the official OpenRouter SDK must remain exactly pinned",
 );
 invariant(

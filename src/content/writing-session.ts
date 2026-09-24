@@ -8,10 +8,12 @@ import {
   type SettingsView,
 } from "../shared/types";
 import { DEFAULT_PREFERENCES } from "../shared/utils/storage";
+import { correctedText } from "../shared/utils/corrected-text";
 import { sendRuntimeMessage } from "../shared/utils/runtime-message";
-import { applyReplacement, getElementText } from "./apply";
+import { applyReplacement, getElementText, replaceWholeEditableText } from "./apply";
 import { resolveEditorAnchor } from "./editor-geometry";
 import {
+  hasWritingSpace,
   isEligibleElement,
   isSupportedElement,
   languageForElement,
@@ -133,6 +135,8 @@ export class WritingSession {
   private lastKnownText = "";
   private suppressInput = false;
   private autoCheckQueued = false;
+  private composing = false;
+  private trustedEditUntil = 0;
 
   constructor() {
     this.overlay = new GrammarOverlay({
@@ -148,12 +152,26 @@ export class WritingSession {
       typeof IntersectionObserver === "undefined"
         ? null
         : new IntersectionObserver(() => this.schedulePosition());
-    this.mutationObserver = new MutationObserver(() => this.schedulePosition());
+    this.mutationObserver = new MutationObserver(() => {
+      this.schedulePosition();
+      if (
+        this.suppressInput ||
+        this.composing ||
+        Date.now() > this.trustedEditUntil ||
+        !this.active?.isConnected
+      )
+        return;
+      const text = getElementText(this.active);
+      if (text !== this.lastKnownText) this.recordTextChange(this.active);
+    });
   }
 
   async start(): Promise<void> {
     document.addEventListener("focusin", this.onFocusIn, true);
     document.addEventListener("input", this.onInput, true);
+    document.addEventListener("beforeinput", this.onBeforeInput, true);
+    document.addEventListener("compositionstart", this.onCompositionStart, true);
+    document.addEventListener("compositionend", this.onCompositionEnd, true);
     document.addEventListener("mousedown", this.onMouseDown, true);
     document.addEventListener("keydown", this.onKeyDown, true);
     window.addEventListener("scroll", this.onViewportChange, true);
@@ -175,6 +193,9 @@ export class WritingSession {
     this.autoCheckQueued = false;
     document.removeEventListener("focusin", this.onFocusIn, true);
     document.removeEventListener("input", this.onInput, true);
+    document.removeEventListener("beforeinput", this.onBeforeInput, true);
+    document.removeEventListener("compositionstart", this.onCompositionStart, true);
+    document.removeEventListener("compositionend", this.onCompositionEnd, true);
     document.removeEventListener("mousedown", this.onMouseDown, true);
     document.removeEventListener("keydown", this.onKeyDown, true);
     window.removeEventListener("scroll", this.onViewportChange, true);
@@ -210,8 +231,31 @@ export class WritingSession {
     if (this.suppressInput || !event.isTrusted) return;
     const target = resolveEditableTarget(event);
     if (!target) return;
+    this.trustedEditUntil = Date.now() + 500;
     if (target !== this.active) this.activate(target);
     if (target !== this.active) return;
+    this.recordTextChange(target);
+  };
+
+  private readonly onBeforeInput = (event: InputEvent): void => {
+    if (event.isTrusted && resolveEditableTarget(event) === this.active) {
+      this.trustedEditUntil = Date.now() + 500;
+    }
+  };
+
+  private readonly onCompositionStart = (): void => {
+    this.composing = true;
+    this.cancelPending();
+  };
+
+  private readonly onCompositionEnd = (event: CompositionEvent): void => {
+    this.composing = false;
+    if (event.isTrusted) this.trustedEditUntil = Date.now() + 500;
+    const target = resolveEditableTarget(event);
+    if (target && target === this.active) this.recordTextChange(target);
+  };
+
+  private recordTextChange(target: SupportedElement): void {
     this.cancelPending();
     this.autoCheckQueued = true;
     this.result = null;
@@ -221,7 +265,7 @@ export class WritingSession {
     this.overlay.hidePanel();
     this.schedulePosition();
     this.scheduleAutoCheck();
-  };
+  }
 
   private readonly onMouseDown = (event: MouseEvent): void => {
     if (this.overlay.containsEvent(event)) return;
@@ -235,6 +279,16 @@ export class WritingSession {
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === "Escape") this.overlay.hidePanel();
+    if (
+      event.isTrusted &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      (event.key.length === 1 || ["Backspace", "Delete", "Enter"].includes(event.key)) &&
+      resolveEditableTarget(event) === this.active
+    ) {
+      this.trustedEditUntil = Date.now() + 500;
+    }
   };
 
   private readonly onViewportChange = (): void => this.schedulePosition();
@@ -275,13 +329,15 @@ export class WritingSession {
     }
     this.cancelPending();
     this.autoCheckQueued = false;
+    this.trustedEditUntil = 0;
     this.resizeObserver.disconnect();
     this.intersectionObserver?.disconnect();
     this.mutationObserver.disconnect();
     this.visualAnchor = null;
     this.activeLineage = [];
     this.lastKnownText = "";
-    this.active = element && isEligibleElement(element) ? element : null;
+    this.active =
+      element && isEligibleElement(element) && hasWritingSpace(element) ? element : null;
     this.result = null;
     this.snapshot = "";
     this.overlay.hidePanel();
@@ -342,6 +398,7 @@ export class WritingSession {
       !this.settings.autoCheck ||
       !this.settings.connected ||
       !this.settings.model ||
+      this.composing ||
       !document.hasFocus()
     ) {
       this.autoCheckQueued = false;
@@ -365,7 +422,9 @@ export class WritingSession {
       this.cancelPending();
       this.autoCheckQueued = false;
     }
-    const liveElement = this.liveEditorForText(this.lastKnownText);
+    const liveElement = this.liveEditorForText(
+      manual && this.active.isConnected ? getElementText(this.active) : this.lastKnownText,
+    );
     if (!liveElement) {
       this.activate(null);
       return;
@@ -380,7 +439,11 @@ export class WritingSession {
       );
       return;
     }
-    if (!manual && (!document.hasFocus() || countWords(text) < MIN_AUTO_CHECK_WORDS)) return;
+    if (
+      !manual &&
+      (this.composing || !document.hasFocus() || countWords(text) < MIN_AUTO_CHECK_WORDS)
+    )
+      return;
     if (!this.settings.connected) {
       this.overlay.showError("Connect OpenRouter from the extension popup.");
       return;
@@ -457,7 +520,10 @@ export class WritingSession {
       applyReplacement(element, error, replacement);
       const live = await this.settleLiveEditor(expected);
       if (!live || getElementText(live) !== expected) {
-        this.invalidateStaleResult();
+        this.overlay.showError(
+          "This editor did not accept the change. You can copy the corrected text.",
+          correctedText(this.result),
+        );
         return;
       }
       const delta = replacement.length - error.length;
@@ -476,6 +542,7 @@ export class WritingSession {
       if (errors.length === 0) this.overlay.hidePanel();
     } finally {
       this.suppressInput = false;
+      this.trustedEditUntil = 0;
     }
   }
 
@@ -494,6 +561,27 @@ export class WritingSession {
       let text = this.snapshot;
       let appliedCount = 0;
       const applicable = this.result.errors.filter((error) => error.replacements[0] !== undefined);
+      const corrected = correctedText(this.result);
+      if (
+        applicable.length > 1 &&
+        !(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)
+      ) {
+        replaceWholeEditableText(element, corrected);
+        const wholeEditor = await this.settleLiveEditor(corrected);
+        if (wholeEditor && getElementText(wholeEditor) === corrected) {
+          this.snapshot = corrected;
+          this.lastKnownText = corrected;
+          this.result = { ...this.result, originalText: corrected, errors: [] };
+          this.cacheResult(this.cacheKey(corrected, languageForElement(wholeEditor)), this.result);
+          this.overlay.showResult(this.result);
+          this.overlay.hidePanel();
+          return;
+        }
+        if (this.active?.isConnected && getElementText(this.active) !== text) {
+          this.overlay.showError("This editor did not accept all changes.", corrected);
+          return;
+        }
+      }
       for (const error of [...applicable].sort((a, b) => b.offset - a.offset)) {
         const replacement = error.replacements[0];
         if (replacement === undefined) continue;
@@ -508,9 +596,13 @@ export class WritingSession {
         appliedCount += 1;
       }
       if (appliedCount !== applicable.length || applicable.length === 0) {
+        const copyText = correctedText(this.result);
         this.result = null;
         this.snapshot = "";
-        this.overlay.showError("Some changes were applied. Check this editor again.");
+        this.overlay.showError(
+          "This editor did not accept every change. You can copy the corrected text.",
+          copyText,
+        );
         return;
       }
       this.snapshot = text;
@@ -521,6 +613,7 @@ export class WritingSession {
       this.overlay.hidePanel();
     } finally {
       this.suppressInput = false;
+      this.trustedEditUntil = 0;
     }
   }
 
@@ -599,6 +692,10 @@ export class WritingSession {
       if (this.active && !this.active.isConnected) {
         this.liveEditorForText(this.lastKnownText);
       }
+      if (this.active?.isConnected && !hasWritingSpace(this.active)) {
+        this.activate(null);
+        return;
+      }
       this.syncGeometryObservers();
       this.overlay.position();
     });
@@ -624,7 +721,7 @@ export class WritingSession {
       subtree: true,
       characterData: true,
     });
-    for (const node of this.activeLineage.slice(1)) {
+    for (const node of this.activeLineage.slice(1, 5)) {
       if (!node.isConnected || !(node instanceof Element || node instanceof ShadowRoot)) continue;
       this.mutationObserver.observe(node, { childList: true });
     }
@@ -667,10 +764,7 @@ export class WritingSession {
     }
 
     for (const node of this.activeLineage.slice(1)) {
-      if (
-        !node.isConnected ||
-        !(node instanceof Element || node instanceof ShadowRoot || node instanceof Document)
-      ) {
+      if (!node.isConnected || !(node instanceof Element || node instanceof ShadowRoot)) {
         continue;
       }
       const matches = explicitEditorCandidates(node).filter(
@@ -691,6 +785,9 @@ export class WritingSession {
     const immediate = this.liveEditorForText(expectedText);
     if (immediate) return immediate;
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const afterPaint = this.liveEditorForText(expectedText);
+    if (afterPaint) return afterPaint;
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
     return this.liveEditorForText(expectedText);
   }
 }

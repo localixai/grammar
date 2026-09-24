@@ -1,6 +1,7 @@
 import type { CheckResult, GrammarError, ThemeMode } from "../shared/types";
+import { correctedText } from "../shared/utils/corrected-text";
 import { viewportRect, visibleEditorRect } from "./editor-geometry";
-import type { SupportedElement } from "./input-detector";
+import { isContentEditable, isFramedEditableBody, type SupportedElement } from "./input-detector";
 
 export type OverlayState = "idle" | "checking" | "issues" | "clean" | "error";
 
@@ -166,11 +167,11 @@ const STYLE = `
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 11px;
+    margin-bottom: 8px;
   }
   .summary-count {
     color: var(--text-soft);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
   }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--error); }
@@ -186,16 +187,6 @@ const STYLE = `
     overflow-wrap: anywhere;
     white-space: pre-wrap;
   }
-  .correction {
-    margin: 0 -1px;
-    padding: 1px 2px;
-    border-radius: 3px;
-    background: color-mix(in oklch, var(--success), transparent 82%);
-    color: color-mix(in oklch, var(--success), var(--text-strong) 24%);
-    font-weight: 600;
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
-  }
   .primary { min-height: 38px; padding: 7px 12px; font-size: 11.5px; font-weight: 650; }
   .primary { background: var(--primary); color: var(--primary-fg); }
   .primary:hover { opacity: .86; }
@@ -203,10 +194,59 @@ const STYLE = `
     width: 100%;
     margin-top: 10px;
   }
-  .empty, .status-view { padding: 28px 20px; text-align: center; color: var(--text-soft); overflow-wrap: anywhere; }
+  .result-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .result-actions button {
+    flex: 1;
+    min-width: 0;
+    height: 38px;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    white-space: nowrap;
+    font: 650 11.5px/1 var(--font);
+  }
+  .result-actions .apply-all { width: auto; margin-top: 0; }
+  .copy-note { margin: 10px 0 0; color: var(--text-soft); font-size: 11px; line-height: 1.45; }
+  .secondary {
+    min-height: 38px;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--card);
+    color: var(--text-strong);
+    cursor: pointer;
+    font: 650 11.5px/1 var(--font);
+  }
+  .secondary:hover { background: var(--surface-hover); }
+  .status-view .copy-text { margin-top: 5px; }
+  .empty, .status-view { padding: 22px 18px; text-align: center; color: var(--text-soft); overflow-wrap: anywhere; }
+  .status-view { display: flex; flex-direction: column; align-items: center; gap: 8px; }
   .empty-icon { width: 34px; height: 34px; margin: 0 auto 9px; color: var(--success); }
-  .status-view strong { display: block; margin-bottom: 5px; color: var(--text-strong); }
-  .error-text { color: var(--error); }
+  .status-view strong { color: var(--text-strong); font-size: 13px; }
+  .status-view span { display: block; line-height: 1.45; }
+  .error-text span { color: var(--error); }
+  .apply-error span { color: var(--warning); }
+  .panel[data-compact="true"] .header { min-height: 36px; padding: 4px 8px 3px 10px; }
+  .panel[data-compact="true"] .body { flex: 1; min-height: 0; }
+  .panel[data-compact="true"] .summary {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 4px 9px 8px;
+  }
+  .panel[data-compact="true"] .summary-head { flex: none; margin-bottom: 4px; }
+  .panel[data-compact="true"] .corrected-preview {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    padding: 6px 8px;
+  }
+  .panel[data-compact="true"] .result-actions { flex: none; margin-top: 6px; }
+  .panel[data-compact="true"] .result-actions button { min-height: 32px; }
+  .panel[data-compact="true"] .copy-note { flex: none; margin-top: 5px; }
   @keyframes lx-spin { to { transform: rotate(360deg); } }
   @keyframes lx-in { from { opacity: 0; transform: translateY(5px) scale(.985); } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
@@ -225,6 +265,14 @@ const ICONS: Record<OverlayState, string> = {
 };
 
 const pointerActions = new WeakMap<HTMLButtonElement, () => void>();
+
+export function requiresManualPaste(hostname: string, target: SupportedElement | null): boolean {
+  return (
+    !!target &&
+    isContentEditable(target) &&
+    /(^|\.)teams\.(?:cloud\.microsoft|microsoft\.com|live\.com)$/iu.test(hostname)
+  );
+}
 
 function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
   const element = document.createElement("button");
@@ -246,33 +294,6 @@ function button(label: string, className: string, onClick: () => void): HTMLButt
   return element;
 }
 
-function correctedPreview(result: CheckResult): DocumentFragment {
-  const fragment = document.createDocumentFragment();
-  const errors = [...result.errors].sort((a, b) => a.offset - b.offset);
-  let cursor = 0;
-  for (const error of errors) {
-    const replacement = error.replacements[0];
-    const end = error.offset + error.length;
-    if (
-      replacement === undefined ||
-      error.offset < cursor ||
-      result.originalText.slice(error.offset, end) !== error.original
-    ) {
-      continue;
-    }
-    fragment.append(document.createTextNode(result.originalText.slice(cursor, error.offset)));
-    if (replacement) {
-      const mark = document.createElement("mark");
-      mark.className = "correction";
-      mark.textContent = replacement;
-      fragment.append(mark);
-    }
-    cursor = end;
-  }
-  fragment.append(document.createTextNode(result.originalText.slice(cursor)));
-  return fragment;
-}
-
 export class GrammarOverlay {
   readonly host: HTMLElement;
   private readonly colorScheme = window.matchMedia("(prefers-color-scheme: light)");
@@ -280,6 +301,9 @@ export class GrammarOverlay {
   private readonly trigger: HTMLButtonElement;
   private readonly count: HTMLElement;
   private readonly panel: HTMLElement;
+  private panelPortal: HTMLElement | null = null;
+  private portalWindow: Window | null = null;
+  private readonly panelTitle: HTMLElement;
   private readonly body: HTMLElement;
   private target: SupportedElement | null = null;
   private state: OverlayState = "idle";
@@ -289,16 +313,17 @@ export class GrammarOverlay {
   private readonly onColorSchemeChange = (): void => {
     if (this.theme === "system") this.applyResolvedTheme();
   };
+  private readonly onPageHide = (): void => this.destroy();
   private readonly onWindowPointerDown = (event: PointerEvent): void => {
     const path = event.composedPath();
-    if (!path.includes(this.host) || !event.isTrusted) return;
+    if (!this.isOwnPath(path) || !event.isTrusted) return;
     this.pointerInteraction = true;
     event.preventDefault();
     event.stopImmediatePropagation();
   };
   private readonly onWindowPointerUp = (event: PointerEvent): void => {
     const path = event.composedPath();
-    if (!path.includes(this.host) || !event.isTrusted) return;
+    if (!this.isOwnPath(path) || !event.isTrusted) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     queueMicrotask(() => {
@@ -307,12 +332,16 @@ export class GrammarOverlay {
   };
   private readonly onWindowClick = (event: MouseEvent): void => {
     const path = event.composedPath();
-    if (!path.includes(this.host) || !event.isTrusted) return;
+    if (!this.isOwnPath(path) || !event.isTrusted) return;
     this.pointerInteraction = false;
     event.preventDefault();
     event.stopImmediatePropagation();
     const target = path.find(
-      (value): value is HTMLButtonElement => value instanceof HTMLButtonElement,
+      (value): value is HTMLButtonElement =>
+        typeof value === "object" &&
+        value !== null &&
+        "tagName" in value &&
+        value.tagName === "BUTTON",
     );
     if (!target || target.disabled) return;
     pointerActions.get(target)?.();
@@ -373,7 +402,8 @@ export class GrammarOverlay {
     const title = document.createElement("div");
     title.id = "localix-grammar-title";
     title.className = "title";
-    title.textContent = "Corrected text";
+    title.textContent = "Suggested text";
+    this.panelTitle = title;
     titleWrap.append(title);
     const close = button("×", "icon-button", () => this.callbacks.onClose());
     close.setAttribute("aria-label", "Close suggestions");
@@ -386,6 +416,7 @@ export class GrammarOverlay {
     window.addEventListener("pointerdown", this.onWindowPointerDown, true);
     window.addEventListener("pointerup", this.onWindowPointerUp, true);
     window.addEventListener("click", this.onWindowClick, true);
+    window.addEventListener("pagehide", this.onPageHide);
     this.colorScheme.addEventListener("change", this.onColorSchemeChange);
   }
 
@@ -398,14 +429,16 @@ export class GrammarOverlay {
     this.target = target;
     if (!target) {
       this.hide();
+      this.detachPortal();
       return;
     }
+    this.configurePortal(target);
     this.trigger.style.display = "flex";
     this.position();
   }
 
   containsEvent(event: Event): boolean {
-    return event.composedPath().includes(this.host);
+    return this.isOwnPath(event.composedPath());
   }
 
   isInteracting(): boolean {
@@ -430,6 +463,7 @@ export class GrammarOverlay {
   }
 
   showChecking(): void {
+    this.panelTitle.textContent = "Checking text";
     this.setState("checking");
     this.panel.setAttribute("aria-busy", "true");
     this.body.replaceChildren(
@@ -438,11 +472,17 @@ export class GrammarOverlay {
     this.openPanel();
   }
 
-  showError(message: string): void {
+  showError(message: string, corrected?: string): void {
+    this.panelTitle.textContent = "Localix Grammar";
     this.setState("error");
     this.panel.setAttribute("aria-busy", "false");
-    const view = this.statusView("Could not check this text", message);
+    const view = this.statusView(
+      corrected ? "Could not apply changes" : "Could not check this text",
+      message,
+    );
     view.classList.add("error-text");
+    if (corrected) view.classList.add("apply-error");
+    if (corrected) view.appendChild(this.copyButton(corrected));
     this.body.replaceChildren(view);
     this.openPanel();
   }
@@ -453,6 +493,7 @@ export class GrammarOverlay {
   }
 
   private renderResult(result: CheckResult, restoreFocus: boolean): void {
+    this.panelTitle.textContent = "Suggested text";
     this.setState(result.errors.length > 0 ? "issues" : "clean", result.errors.length);
     this.panel.setAttribute("aria-busy", "false");
     this.body.replaceChildren();
@@ -487,17 +528,49 @@ export class GrammarOverlay {
     preview.className = "corrected-preview";
     preview.setAttribute("role", "region");
     preview.setAttribute("aria-label", "Corrected text preview");
-    preview.append(correctedPreview(result));
+    preview.textContent = correctedText(result);
 
-    const applyAll = button("Apply all", "primary apply-all", () => this.callbacks.onApplyAll());
-    applyAll.setAttribute("aria-label", "Accept all");
-
-    summary.append(summaryHead, preview, applyAll);
+    const actions = document.createElement("div");
+    actions.className = "result-actions";
+    const finalText = correctedText(result);
+    if (requiresManualPaste(location.hostname, this.target)) {
+      const note = document.createElement("p");
+      note.className = "copy-note";
+      note.textContent = "Copy the corrected text, then paste it into Teams.";
+      actions.append(this.copyButton(finalText, true));
+      summary.append(summaryHead, preview, note, actions);
+    } else {
+      const applyAll = button("Apply all", "primary apply-all", () => this.callbacks.onApplyAll());
+      applyAll.setAttribute("aria-label", "Accept all");
+      actions.append(applyAll, this.copyButton(finalText));
+      summary.append(summaryHead, preview, actions);
+    }
     this.body.appendChild(summary);
     this.openPanel();
     if (restoreFocus) {
-      this.shadow.querySelector<HTMLButtonElement>(".apply-all")?.focus({ preventScroll: true });
+      this.panel
+        .querySelector<HTMLButtonElement>(".apply-all, .copy-text")
+        ?.focus({ preventScroll: true });
     }
+  }
+
+  private copyButton(text: string, primary = false): HTMLButtonElement {
+    const copy = button(
+      primary ? "Copy for Teams" : "Copy text",
+      `${primary ? "primary" : "secondary"} copy-text`,
+      () => {
+        void (async (): Promise<void> => {
+          try {
+            await navigator.clipboard.writeText(text);
+            copy.textContent = primary ? "Copied — paste into Teams" : "Copied";
+          } catch {
+            copy.textContent = "Copy failed";
+          }
+        })();
+      },
+    );
+    copy.setAttribute("aria-label", "Copy corrected text");
+    return copy;
   }
 
   hidePanel(shouldRestoreFocus = true): void {
@@ -505,6 +578,7 @@ export class GrammarOverlay {
     this.panelOpen = false;
     this.panel.dataset["open"] = "false";
     this.trigger.setAttribute("aria-expanded", "false");
+    this.trigger.style.visibility = "";
     if (restoreFocus && this.target) this.trigger.focus({ preventScroll: true });
   }
 
@@ -554,37 +628,55 @@ export class GrammarOverlay {
     this.trigger.style.left = `${Math.round(left)}px`;
 
     if (!this.panelOpen) return;
-    const panelWidth = Math.min(344, viewport.width - 16);
+    const panelViewport = this.portalWindow ? this.viewportFor(this.portalWindow) : viewport;
+    const compact = !this.panelPortal && viewport.height < 300;
+    this.trigger.style.visibility = compact ? "hidden" : "";
+    this.panel.dataset["compact"] = String(compact);
+    this.panel.style.height = compact ? `${viewport.height - 16}px` : "";
+    const panelWidth = Math.min(
+      this.panelPortal ? 400 : compact ? 420 : 344,
+      panelViewport.width - 16,
+    );
     this.panel.style.width = `${panelWidth}px`;
-    this.panel.style.maxHeight = `${viewport.height - 16}px`;
+    this.panel.style.maxHeight = `${panelViewport.height - 16}px`;
     const panelHeight = this.panel.offsetHeight || 420;
-    const below = top + buttonHeight + 8;
-    const above = top - panelHeight - 8;
-    const fitsBelow = below + panelHeight <= viewport.bottom - 8;
-    const fitsAbove = above >= viewport.top + 8;
-    const spaceBelow = viewport.bottom - (top + buttonHeight);
-    const spaceAbove = top - viewport.top;
+    const frameRect = this.panelPortal ? window.frameElement?.getBoundingClientRect() : null;
+    const anchorTop = top + (frameRect?.top ?? 0);
+    const anchorLeft = left + (frameRect?.left ?? 0);
+    const below = anchorTop + buttonHeight + 8;
+    const above = anchorTop - panelHeight - 8;
+    const fitsBelow = below + panelHeight <= panelViewport.bottom - 8;
+    const fitsAbove = above >= panelViewport.top + 8;
+    const spaceBelow = panelViewport.bottom - (anchorTop + buttonHeight);
+    const spaceAbove = anchorTop - panelViewport.top;
     let panelTop = fitsBelow || (!fitsAbove && spaceBelow >= spaceAbove) ? below : above;
-    panelTop = Math.max(viewport.top + 8, Math.min(panelTop, viewport.bottom - panelHeight - 8));
+    panelTop = Math.max(
+      panelViewport.top + 8,
+      Math.min(panelTop, panelViewport.bottom - panelHeight - 8),
+    );
     const panelLeft = Math.max(
-      viewport.left + 8,
-      Math.min(left + buttonWidth - panelWidth, viewport.right - panelWidth - 8),
+      panelViewport.left + 8,
+      Math.min(anchorLeft + buttonWidth - panelWidth, panelViewport.right - panelWidth - 8),
     );
     this.panel.style.top = `${Math.round(panelTop)}px`;
     this.panel.style.left = `${Math.round(panelLeft)}px`;
   }
 
   destroy(): void {
+    this.detachPortal();
     window.removeEventListener("pointerdown", this.onWindowPointerDown, true);
     window.removeEventListener("pointerup", this.onWindowPointerUp, true);
     window.removeEventListener("click", this.onWindowClick, true);
+    window.removeEventListener("pagehide", this.onPageHide);
     this.colorScheme.removeEventListener("change", this.onColorSchemeChange);
     this.host.remove();
   }
 
   private applyResolvedTheme(): void {
-    this.host.dataset["theme"] =
+    const resolved =
       this.theme === "system" ? (this.colorScheme.matches ? "light" : "dark") : this.theme;
+    this.host.dataset["theme"] = resolved;
+    if (this.panelPortal) this.panelPortal.dataset["theme"] = resolved;
   }
 
   private openPanel(): void {
@@ -595,8 +687,80 @@ export class GrammarOverlay {
   }
 
   private panelHasFocus(): boolean {
-    const active = this.shadow.activeElement;
-    return active instanceof Element && this.panel.contains(active);
+    const active = (this.panel.getRootNode() as ShadowRoot).activeElement;
+    return active !== null && this.panel.contains(active);
+  }
+
+  private isOwnPath(path: EventTarget[]): boolean {
+    return (
+      path.includes(this.host) || (this.panelPortal !== null && path.includes(this.panelPortal))
+    );
+  }
+
+  private viewportFor(win: Window): ReturnType<typeof viewportRect> {
+    const visual = win.visualViewport;
+    const left = visual?.offsetLeft ?? 0;
+    const top = visual?.offsetTop ?? 0;
+    const width = visual?.width ?? win.innerWidth;
+    const height = visual?.height ?? win.innerHeight;
+    return { left, top, width, height, right: left + width, bottom: top + height };
+  }
+
+  private configurePortal(target: SupportedElement): void {
+    if (!isFramedEditableBody(target)) {
+      this.detachPortal();
+      return;
+    }
+    if (this.panelPortal) return;
+    try {
+      const parentWindow = window.parent;
+      const parentDocument = parentWindow.document;
+      if (!window.frameElement || !parentDocument.documentElement) return;
+      const portal = parentDocument.createElement("localix-grammar-panel-root");
+      portal.dataset["localixGrammarIgnore"] = "true";
+      portal.style.setProperty("all", "initial", "important");
+      portal.style.setProperty("position", "fixed", "important");
+      portal.style.setProperty("inset", "0", "important");
+      portal.style.setProperty("width", "0", "important");
+      portal.style.setProperty("height", "0", "important");
+      portal.style.setProperty("z-index", "2147483646", "important");
+      portal.style.setProperty("pointer-events", "none", "important");
+      const shadow = portal.attachShadow({ mode: "open" });
+      const style = parentDocument.createElement("style");
+      style.textContent = STYLE;
+      shadow.append(style, this.panel);
+      parentDocument.documentElement.appendChild(portal);
+      this.panelPortal = portal;
+      this.portalWindow = parentWindow;
+      this.applyResolvedTheme();
+      parentWindow.addEventListener("pointerdown", this.onWindowPointerDown, true);
+      parentWindow.addEventListener("pointerup", this.onWindowPointerUp, true);
+      parentWindow.addEventListener("click", this.onWindowClick, true);
+      parentWindow.addEventListener("scroll", this.onPortalViewportChange, true);
+      parentWindow.addEventListener("resize", this.onPortalViewportChange);
+      parentWindow.visualViewport?.addEventListener("resize", this.onPortalViewportChange);
+      parentWindow.visualViewport?.addEventListener("scroll", this.onPortalViewportChange);
+    } catch {
+      this.detachPortal();
+    }
+  }
+
+  private readonly onPortalViewportChange = (): void => this.position();
+
+  private detachPortal(): void {
+    if (!this.panelPortal) return;
+    const parentWindow = this.portalWindow;
+    parentWindow?.removeEventListener("pointerdown", this.onWindowPointerDown, true);
+    parentWindow?.removeEventListener("pointerup", this.onWindowPointerUp, true);
+    parentWindow?.removeEventListener("click", this.onWindowClick, true);
+    parentWindow?.removeEventListener("scroll", this.onPortalViewportChange, true);
+    parentWindow?.removeEventListener("resize", this.onPortalViewportChange);
+    parentWindow?.visualViewport?.removeEventListener("resize", this.onPortalViewportChange);
+    parentWindow?.visualViewport?.removeEventListener("scroll", this.onPortalViewportChange);
+    this.shadow.appendChild(this.panel);
+    this.panelPortal.remove();
+    this.panelPortal = null;
+    this.portalWindow = null;
   }
 
   private statusView(title: string, detail: string): HTMLElement {

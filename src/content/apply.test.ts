@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { GrammarError } from "../shared/types";
-import { applyAllReplacements, applyReplacement, getElementText, mapEditableText } from "./apply";
+import {
+  applyAllReplacements,
+  applyReplacement,
+  getElementText,
+  mapEditableText,
+  replaceWholeEditableText,
+} from "./apply";
 
 function error(offset: number, original: string, replacement: string): GrammarError {
   return {
@@ -115,6 +121,49 @@ describe("form controls", () => {
 });
 
 describe("contenteditable", () => {
+  test("replaces a plain editing surface in one native edit and preserves protected markup", () => {
+    const editor = document.createElement("div");
+    editor.contentEditable = "true";
+    editor.textContent = "This are plain text.";
+    document.body.appendChild(editor);
+    const original = Object.getOwnPropertyDescriptor(document, "execCommand");
+    const command = vi.fn((_name: string, _ui: boolean, replacement: string): boolean => {
+      editor.textContent = replacement;
+      return true;
+    });
+    Object.defineProperty(document, "execCommand", { configurable: true, value: command });
+    try {
+      expect(replaceWholeEditableText(editor, "This is plain text.")).toEqual({
+        applied: true,
+        text: "This is plain text.",
+      });
+      editor.innerHTML = "<strong>This</strong> are rich text.";
+      expect(replaceWholeEditableText(editor, "This is rich text.").applied).toBe(false);
+      expect(command).toHaveBeenCalledTimes(1);
+    } finally {
+      if (original) Object.defineProperty(document, "execCommand", original);
+      else Reflect.deleteProperty(document, "execCommand");
+    }
+  });
+  test("uses the browser editing command when a rich editor accepts it", () => {
+    const editor = document.createElement("div");
+    editor.contentEditable = "true";
+    editor.textContent = "This are text.";
+    document.body.appendChild(editor);
+    const original = Object.getOwnPropertyDescriptor(document, "execCommand");
+    const command = vi.fn((_name: string, _ui: boolean, replacement: string): boolean => {
+      editor.textContent = `This ${replacement} text.`;
+      return true;
+    });
+    Object.defineProperty(document, "execCommand", { configurable: true, value: command });
+    try {
+      expect(applyReplacement(editor, error(5, "are", "is"), "is").applied).toBe(true);
+      expect(command).toHaveBeenCalledWith("insertText", false, "is");
+    } finally {
+      if (original) Object.defineProperty(document, "execCommand", original);
+      else Reflect.deleteProperty(document, "execCommand");
+    }
+  });
   test("maps block boundaries to newlines", () => {
     const editor = document.createElement("div");
     editor.contentEditable = "true";

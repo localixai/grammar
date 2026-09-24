@@ -405,6 +405,24 @@ export function applyReplacement(
     : selectRange(element, targetRange!);
   if (form) formElement!.setSelectionRange(error.offset, end);
 
+  // Let the browser perform the edit first. Rich editors often accept this native editing
+  // command and update their own state, while a synthetic input event alone is ignored.
+  if (!form && typeof element.ownerDocument.execCommand === "function") {
+    try {
+      element.focus({ preventScroll: true });
+      selectRange(element, targetRange!);
+      if (element.ownerDocument.execCommand("insertText", false, replacement)) {
+        const nativeText = getElementText(element);
+        if (nativeText === expected) {
+          restoreTextSelection(element, textSelection, error.offset, end, replacement.length);
+        }
+        return { applied: nativeText === expected, text: nativeText };
+      }
+    } catch {
+      // Continue with the existing beforeinput and DOM path when the command is unavailable.
+    }
+  }
+
   if (!dispatchBeforeInput(element, replacement, targetRange ?? undefined)) {
     const handledText = getElementText(element);
     if (handledText === expected && !form) {
@@ -431,6 +449,40 @@ export function applyReplacement(
   }
   dispatchInput(element, replacement);
   return { applied: true, text };
+}
+
+/** Use a single native edit for plain rich-editor surfaces that reject incremental changes. */
+export function replaceWholeEditableText(
+  element: SupportedElement,
+  replacement: string,
+): ApplyResult {
+  const current = getElementText(element);
+  if (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement ||
+    element.querySelector(
+      'strong, b, em, i, a, code, pre, blockquote, ul, ol, li, img, video, [contenteditable="false"]',
+    ) ||
+    typeof element.ownerDocument.execCommand !== "function"
+  ) {
+    return { applied: false, text: current };
+  }
+  const selection = element.ownerDocument.defaultView?.getSelection();
+  if (!selection) return { applied: false, text: current };
+  try {
+    element.focus({ preventScroll: true });
+    const range = element.ownerDocument.createRange();
+    range.selectNodeContents(element);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    if (!element.ownerDocument.execCommand("insertText", false, replacement)) {
+      return { applied: false, text: getElementText(element) };
+    }
+  } catch {
+    return { applied: false, text: getElementText(element) };
+  }
+  const text = getElementText(element);
+  return { applied: text === replacement, text };
 }
 
 export function applyAllReplacements(

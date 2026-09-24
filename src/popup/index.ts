@@ -1,4 +1,5 @@
 import type {
+  CheckResult,
   Message,
   MessageResponse,
   ModelInfo,
@@ -6,6 +7,14 @@ import type {
   SettingsView,
   ThemeMode,
 } from "../shared/types";
+import { MAX_CHECK_TEXT_LENGTH } from "../shared/types";
+import { correctedText } from "../shared/utils/corrected-text";
+import {
+  isPendingSelection,
+  PENDING_SELECTION_KEY,
+  type PendingSelection,
+} from "../shared/utils/pending-selection";
+import { sendRuntimeMessage } from "../shared/utils/runtime-message";
 
 const THEME_ICON: Record<ThemeMode, string> = {
   dark: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3 6.5 6.5 0 1 0 15.7 12.7Z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
@@ -22,18 +31,11 @@ function element<T extends HTMLElement>(id: string): T {
 }
 
 function sendMessage(message: Message): Promise<MessageResponse> {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage(message, (response: MessageResponse | undefined) => {
-      if (chrome.runtime.lastError) {
-        resolve({
-          success: false,
-          error: chrome.runtime.lastError.message ?? "Localix Grammar is unavailable.",
-        });
-      } else {
-        resolve(response ?? { success: false, error: "No response from Localix Grammar." });
-      }
-    });
-  });
+  return sendRuntimeMessage(
+    message,
+    message.type === "CHECK_TEXT" ? 35_000 : 10_000,
+    "Localix Grammar did not respond. Try again.",
+  );
 }
 
 function isSettingsView(value: unknown): value is SettingsView {
@@ -88,8 +90,12 @@ async function activeHostname(): Promise<string | null> {
 
 const loadingView = element("loadingView");
 const connectView = element("connectView");
+const checkView = element("checkView");
 const settingsView = element("settingsView");
 const modelsView = element("modelsView");
+const popupNav = element("popupNav");
+const checkTab = element<HTMLButtonElement>("checkTab");
+const settingsTab = element<HTMLButtonElement>("settingsTab");
 const connectButton = element<HTMLButtonElement>("connectButton");
 const tokenToggleButton = element<HTMLButtonElement>("tokenToggleButton");
 const tokenPanel = element<HTMLFormElement>("tokenPanel");
@@ -110,19 +116,134 @@ const modelName = element("modelName");
 const modelId = element("modelId");
 const modelsBackButton = element<HTMLButtonElement>("modelsBackButton");
 const modelSearch = element<HTMLInputElement>("modelSearch");
+const modelSort = element<HTMLSelectElement>("modelSort");
 const modelList = element("modelList");
 const popupAlert = element("popupAlert");
+const quickCheckForm = element<HTMLFormElement>("quickCheckForm");
+const quickCheckInput = element<HTMLTextAreaElement>("quickCheckInput");
+const quickCheckButton = element<HTMLButtonElement>("quickCheckButton");
+const quickCheckCount = element("quickCheckCount");
+const quickCheckStatus = element("quickCheckStatus");
+const quickCheckCopy = element<HTMLButtonElement>("quickCheckCopy");
 
 let settings: SettingsView | null = null;
 let hostname: string | null = null;
 let models: ModelInfo[] = [];
 let alertTimer: number | undefined;
+let quickCheckRequestId: string | null = null;
+let connectedView: "check" | "settings" = "check";
+let queuedSelection: PendingSelection | null = null;
+let consumedSelectionId: string | null = null;
+
+function consumeSelection(value: unknown): void {
+  if (!isPendingSelection(value) || consumedSelectionId === value.id) return;
+  if (Date.now() - value.createdAt > 60_000 || !value.text.trim()) return;
+  if (!settings) {
+    queuedSelection = value;
+    return;
+  }
+  consumedSelectionId = value.id;
+  quickCheckInput.value = value.text.slice(0, MAX_CHECK_TEXT_LENGTH);
+  quickCheckInput.dispatchEvent(new Event("input", { bubbles: true }));
+  if (value.truncated) {
+    quickCheckStatus.textContent = "Only the first 20,000 characters were selected.";
+  } else if (settings.connected && settings.model) {
+    connectedView = "check";
+    show(checkView);
+    quickCheckForm.requestSubmit();
+  }
+  void chrome.storage.session.remove(PENDING_SELECTION_KEY);
+}
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "session") consumeSelection(changes[PENDING_SELECTION_KEY]?.newValue);
+});
+
+function renderQuickCheck(result: CheckResult): void {
+  if (result.errors.length === 0) {
+    quickCheckStatus.textContent = "No corrections needed";
+    return;
+  }
+  const corrected = correctedText(result);
+  quickCheckInput.value = corrected;
+  quickCheckCount.textContent = `${corrected.length.toLocaleString()} / ${MAX_CHECK_TEXT_LENGTH.toLocaleString()}`;
+  quickCheckStatus.textContent = `${result.errors.length} ${result.errors.length === 1 ? "correction" : "corrections"} applied`;
+}
+
+quickCheckInput.addEventListener("input", () => {
+  quickCheckCount.textContent = `${quickCheckInput.value.length.toLocaleString()} / ${MAX_CHECK_TEXT_LENGTH.toLocaleString()}`;
+  const hasText = !!quickCheckInput.value.trim();
+  quickCheckButton.disabled = !hasText;
+  quickCheckCopy.disabled = !hasText;
+  quickCheckStatus.textContent = "";
+  if (quickCheckRequestId) {
+    void sendMessage({ type: "CANCEL_CHECK", payload: { requestId: quickCheckRequestId } });
+    quickCheckRequestId = null;
+    quickCheckButton.textContent = "Check";
+  }
+});
+
+quickCheckForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const text = quickCheckInput.value;
+  if (!text.trim() || quickCheckRequestId) return;
+  const requestId = crypto.randomUUID();
+  quickCheckRequestId = requestId;
+  quickCheckButton.disabled = true;
+  quickCheckButton.textContent = "Checking…";
+  quickCheckStatus.textContent = "";
+  void (async (): Promise<void> => {
+    const response = await sendMessage({ type: "CHECK_TEXT", payload: { requestId, text } });
+    if (quickCheckRequestId !== requestId) return;
+    quickCheckRequestId = null;
+    quickCheckButton.disabled = false;
+    quickCheckButton.textContent = "Check";
+    if (quickCheckInput.value !== text) return;
+    if (
+      !response.success ||
+      !response.data ||
+      !Array.isArray((response.data as CheckResult).errors)
+    ) {
+      quickCheckStatus.textContent = response.success
+        ? "Could not read the result."
+        : response.error;
+      return;
+    }
+    renderQuickCheck(response.data as CheckResult);
+  })();
+});
+
+quickCheckCopy.addEventListener("click", () => {
+  if (!quickCheckInput.value) return;
+  void (async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(quickCheckInput.value);
+      quickCheckStatus.textContent = "Text copied";
+    } catch {
+      quickCheckStatus.textContent = "Could not copy. Select the text above.";
+    }
+  })();
+});
+
+quickCheckButton.disabled = true;
 
 function show(view: HTMLElement): void {
-  for (const candidate of [loadingView, connectView, settingsView, modelsView]) {
+  for (const candidate of [loadingView, connectView, checkView, settingsView, modelsView]) {
     candidate.classList.toggle("hidden", candidate !== view);
   }
+  popupNav.classList.toggle("hidden", view !== checkView && view !== settingsView);
+  checkTab.setAttribute("aria-current", view === checkView ? "page" : "false");
+  settingsTab.setAttribute("aria-current", view === settingsView ? "page" : "false");
 }
+
+checkTab.addEventListener("click", () => {
+  connectedView = "check";
+  show(checkView);
+});
+settingsTab.addEventListener("click", () => {
+  connectedView = "settings";
+  show(settingsView);
+});
 
 function showAlert(message: string): void {
   window.clearTimeout(alertTimer);
@@ -203,6 +324,7 @@ function renderSettings(): void {
   enabledToggle.checked = settings.enabled;
   autoCheckToggle.checked = settings.autoCheck;
   renderSelectedModel();
+  if (!settings.model) connectedView = "settings";
   siteSetting.classList.toggle("hidden", hostname === null);
   if (hostname) {
     siteTitle.textContent = hostname;
@@ -211,7 +333,9 @@ function renderSettings(): void {
       : "Use Grammar on this site";
     siteToggle.checked = !settings.disabledSites.includes(hostname);
   }
-  show(settings.connected ? settingsView : connectView);
+  show(
+    settings.connected ? (connectedView === "settings" ? settingsView : checkView) : connectView,
+  );
 }
 
 async function updatePreferences(patch: Partial<Preferences>): Promise<boolean> {
@@ -242,6 +366,17 @@ function renderModels(query = ""): void {
       model.name.toLowerCase().includes(normalized) ||
       model.id.toLowerCase().includes(normalized),
   );
+  filtered.sort((a, b) => {
+    if (modelSort.value !== "name") {
+      if (a.createdAt === undefined)
+        return b.createdAt === undefined ? a.name.localeCompare(b.name) : 1;
+      if (b.createdAt === undefined) return -1;
+      const dateOrder =
+        modelSort.value === "oldest" ? a.createdAt - b.createdAt : b.createdAt - a.createdAt;
+      if (dateOrder !== 0) return dateOrder;
+    }
+    return a.name.localeCompare(b.name);
+  });
   if (filtered.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-models";
@@ -409,6 +544,7 @@ function closeModels(): void {
 
 modelsBackButton.addEventListener("click", closeModels);
 modelSearch.addEventListener("input", () => renderModels(modelSearch.value));
+modelSort.addEventListener("change", () => renderModels(modelSearch.value));
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !modelsView.classList.contains("hidden")) {
     event.preventDefault();
@@ -439,6 +575,8 @@ async function initialize(): Promise<void> {
   applyTheme(settings.theme);
   if (settings.connected) await loadModels();
   renderSettings();
+  const stored = await chrome.storage.session.get(PENDING_SELECTION_KEY);
+  consumeSelection(queuedSelection ?? stored[PENDING_SELECTION_KEY]);
 }
 
 void initialize();

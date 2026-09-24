@@ -73,4 +73,13 @@ describe("scopedRequestId", () => {
   test("rejects requests without a tab identity", () => {
     expect(scopedRequestId({ frameId: 0 }, "request")).toBeNull();
   });
+
+  test("isolates checks from the extension popup", () => {
+    expect(
+      scopedRequestId(
+        { id: "extension", url: "chrome-extension://extension/src/popup/index.html" },
+        "request",
+      ),
+    ).toBe("extension:chrome-extension://extension/src/popup/index.html:request");
+  });
 });

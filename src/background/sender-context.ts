@@ -26,7 +26,9 @@ export function scopedRequestId(
   requestId: string,
 ): string | null {
   const tabId = sender.tab?.id;
-  if (tabId === undefined) return null;
+  if (tabId === undefined) {
+    return isExtensionPage(sender) ? `extension:${sender.url}:${requestId}` : null;
+  }
   const frameId = sender.frameId ?? 0;
   const documentId = sender.documentId ?? "";
   return `${tabId}:${frameId}:${documentId}:${requestId}`;

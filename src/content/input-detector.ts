@@ -97,6 +97,10 @@ export function isSupportedElement(element: Element): element is SupportedElemen
   return isEditableInput(element) || isTextarea(element) || isContentEditable(element);
 }
 
+export function isFramedEditableBody(element: SupportedElement): boolean {
+  return element === document.body && isContentEditable(element) && window !== window.top;
+}
+
 function topLevelEditable(element: HTMLElement): HTMLElement {
   let root = element;
   while (root.parentElement && isContentEditable(root.parentElement)) {
@@ -187,6 +191,30 @@ export function skipReason(element: SupportedElement): string | null {
 
 export function isEligibleElement(element: SupportedElement): boolean {
   return skipReason(element) === null;
+}
+
+/** Avoid controls intended for a cell value, label, or short search term. */
+export function hasWritingSpace(element: SupportedElement): boolean {
+  if (isFramedEditableBody(element)) {
+    return window.innerWidth >= 120 && window.innerHeight >= 64;
+  }
+  const rect = element.getBoundingClientRect();
+  if (element instanceof HTMLInputElement) return rect.width >= 180 && rect.height >= 24;
+  if (element.closest("td, th, [role='gridcell'], [role='columnheader']")) {
+    return rect.width >= 240 && rect.height >= 64;
+  }
+  if (rect.width >= 120 && rect.height >= 24) return true;
+  // Some rich editors keep a tiny editing node inside a full-size writing surface.
+  if (
+    !(element instanceof HTMLTextAreaElement) &&
+    element.getAttribute("role") === "textbox" &&
+    element.textContent &&
+    element.textContent.trim().length >= 20
+  ) {
+    const surface = element.parentElement?.getBoundingClientRect();
+    return !!surface && surface.width >= 240 && surface.height >= 80;
+  }
+  return false;
 }
 
 function validLanguage(value: string | null): string | undefined {

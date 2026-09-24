@@ -170,6 +170,19 @@ describe("editor geometry", () => {
     expect(visibleEditorRect(editable)).toBeNull();
   });
 
+  test("returns null for an editor inside a hidden application surface", () => {
+    const container = document.createElement("div");
+    container.style.visibility = "hidden";
+    const textarea = document.createElement("textarea");
+    textarea.getBoundingClientRect = (): DOMRect => rect(20, 30, 400, 160);
+    container.appendChild(textarea);
+    document.body.appendChild(container);
+
+    expect(visibleEditorRect(textarea)).toBeNull();
+    container.style.visibility = "visible";
+    expect(visibleEditorRect(textarea)).toMatchObject({ left: 20, top: 30, width: 400 });
+  });
+
   test("uses the visual viewport during zoomed or offset layouts", () => {
     const descriptor = Object.getOwnPropertyDescriptor(window, "visualViewport");
     Object.defineProperty(window, "visualViewport", {

@@ -3,8 +3,8 @@
   "name": "Localix Grammar",
   "version": "2.0.2",
   "description": "Precise AI grammar, spelling, punctuation, and style checks in supported web editors.",
-  "minimum_chrome_version": "116",
-  "permissions": ["storage", "identity"],
+  "minimum_chrome_version": "127",
+  "permissions": ["storage", "identity", "contextMenus"],
   "host_permissions": ["https://openrouter.ai/*"],
   "background": {
     "service_worker": "background.js",
@@ -14,8 +14,9 @@
     {
       "matches": ["http://*/*", "https://*/*"],
       "js": ["content.js"],
-      "run_at": "document_start",
-      "all_frames": true
+      "run_at": "document_idle",
+      "all_frames": true,
+      "match_origin_as_fallback": true
     }
   ],
   "action": {

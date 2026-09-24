@@ -11,7 +11,7 @@ function buildContentScript() {
         configFile: false,
         publicDir: false,
         build: {
-          target: "chrome116",
+          target: "chrome127",
           minify: "oxc",
           sourcemap: false,
           outDir: "dist",
@@ -36,7 +36,7 @@ function buildBackgroundScript() {
         configFile: false,
         publicDir: false,
         build: {
-          target: "chrome116",
+          target: "chrome127",
           minify: "oxc",
           sourcemap: false,
           outDir: "dist",
@@ -89,7 +89,7 @@ export default defineConfig({
   publicDir: false,
   plugins: [copyAssetsPlugin(), buildContentScript(), buildBackgroundScript()],
   build: {
-    target: "chrome116",
+    target: "chrome127",
     minify: "oxc",
     sourcemap: false,
     outDir: "dist",

@@ -15,11 +15,13 @@ function catalogModel(
     completion?: string;
     discount?: number;
     parameters?: string[];
+    created?: number;
   } = {},
 ): CatalogModel {
   return {
     id,
     name: overrides.name ?? id,
+    ...(overrides.created === undefined ? {} : { created: overrides.created }),
     contextLength: 128_000,
     pricing: {
       prompt: overrides.prompt ?? "0.000001",
@@ -91,6 +93,15 @@ describe("official OpenRouter model catalog", () => {
         contextWindow: 128_000,
       },
     ]);
+  });
+
+  test("passes through valid model creation timestamps for popup sorting", () => {
+    const models = normalizeModelCatalog([
+      catalogModel("vendor/new", { created: 1_750_000_000 }),
+      catalogModel("vendor/unknown", { created: 0 }),
+    ]);
+    expect(models.find((model) => model.id === "vendor/new")?.createdAt).toBe(1_750_000_000);
+    expect(models.find((model) => model.id === "vendor/unknown")?.createdAt).toBeUndefined();
   });
 
   test("bounds an unexpectedly oversized catalog response", () => {

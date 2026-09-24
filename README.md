@@ -31,14 +31,19 @@ scripts.
 ## Features
 
 - Manual and automatic checks in text fields and `contenteditable` editors
+- A compact checker in the extension popup for text copied from anywhere
+- Check selected text from the browser context menu, including rich-text frames
+- Small controls and spreadsheet cells stay free of the editor button
 - One-click application of all suggested corrections
+- Copy corrected text when an editor cannot apply a change
+- Search and sort OpenRouter models by date or name
 - Per-site and global pause controls
 - Light, dark, and system themes
 - OpenRouter OAuth or API-key connection
 
 ## Install from source
 
-Requires Node.js 22.19+ and Chrome/Chromium 116+.
+Requires Node.js 22.19+ and Chrome/Chromium 127+.
 
 ```sh
 npm ci --ignore-scripts
