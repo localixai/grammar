@@ -2,7 +2,7 @@
 
 All notable changes to Localix Grammar are documented here.
 
-## 2.0.2 — Unreleased
+## 2.0.3 — Unreleased
 
 ### Runtime
 
